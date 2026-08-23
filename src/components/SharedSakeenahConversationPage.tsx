@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowRight, Check, Copy, Download, Loader2, MessageCirclePlus, Share2, X } from "lucide-react";
+import { ArrowRight, Check, Copy, Download, MessageCirclePlus, Share2, X } from "lucide-react";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { getCurrentSession } from "@/services/auth-service";
 import {
   forkSakeenahSharedConversation,
@@ -98,7 +99,7 @@ export default function SharedSakeenahConversationPage({ token }: { token: strin
   };
 
   if (loading) {
-    return <main dir="rtl" data-clarity-mask="true" data-sakeenah-ai-surface="true" className="flex min-h-[100dvh] items-center justify-center bg-[#ece7de] text-[#7f6a55]"><div className="flex items-center gap-3 text-sm font-bold"><Loader2 size={20} className="animate-spin text-[#b88a4f]" />جارٍ تحميل المحادثة</div></main>;
+    return <main dir="rtl" data-clarity-mask="true" data-sakeenah-ai-surface="true" className="flex min-h-[100dvh] items-center justify-center bg-[#ece7de] text-[#7f6a55]"><div className="flex items-center gap-3 text-sm font-bold"><SakeenahLineSpinner size={20} color="#b88a4f" label="جارٍ تحميل المحادثة" />جارٍ تحميل المحادثة</div></main>;
   }
 
   if (error || !payload) {
@@ -145,7 +146,7 @@ export default function SharedSakeenahConversationPage({ token }: { token: strin
               </div>
             </div>
             <div className="mt-2.5 flex gap-2">
-              <button type="button" onClick={() => void continueConversation()} disabled={continuing || continued} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#b88a4f] px-3 text-[11px] font-black text-white shadow-sm hover:bg-[#a0753e] disabled:opacity-60 cursor-pointer">{continuing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}{continued ? "تم تجهيزها" : "مواصلة المحادثة"}</button>
+              <button type="button" onClick={() => void continueConversation()} disabled={continuing || continued} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#b88a4f] px-3 text-[11px] font-black text-white shadow-sm hover:bg-[#a0753e] disabled:opacity-60 cursor-pointer">{continuing ? <SakeenahLineSpinner size={16} color="#ffffff" label="جارٍ تجهيز المحادثة" /> : <Share2 size={14} />}{continued ? "تم تجهيزها" : "مواصلة المحادثة"}</button>
               <a href={ANDROID_STORE_URL} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#b88a4f]/30 px-2 text-[11px] font-black text-[#7f6a55] hover:bg-white/50"><Download size={14} />تحميل سَكِينَة</a>
             </div>
           </div>

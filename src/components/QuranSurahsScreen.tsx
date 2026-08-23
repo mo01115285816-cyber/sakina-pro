@@ -7,13 +7,13 @@ import {
   Download,
   Trash2,
   FolderDown,
-  Loader2,
   CloudLightning,
   Smartphone,
   BookOpen,
 } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
 import { surahNames } from "@/data/surahNames";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { vocalizedSurahNames } from "@/data/vocalizedSurahNames";
 
 interface Props {
@@ -309,11 +309,7 @@ export default function QuranSurahsScreen({
                     }`}
                   >
                     {isDownloading ? (
-                      <Loader2
-                        size={15}
-                        className="animate-spin"
-                        strokeWidth={2.5}
-                      />
+                      <SakeenahLineSpinner size={16} color="#b88a4f" label="جارٍ تنزيل السورة" />
                     ) : isDownloaded ? (
                       <Smartphone size={15} strokeWidth={2.2} />
                     ) : (

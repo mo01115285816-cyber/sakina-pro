@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  LogOut, X, Play, Pause, BookOpen, Loader2, Moon, Sun, Settings, Image as ImageIcon, ChevronRight, Copy, Check, Bookmark, Palette, AlertCircle
+  LogOut, X, Play, Pause, BookOpen, Moon, Sun, Settings, Image as ImageIcon, ChevronRight, Copy, Check, Bookmark, Palette, AlertCircle
 } from "lucide-react";
 import { surahNames } from "@/data/surahNames";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { MushafQcfV2LayoutService } from "@/services/MushafQcfV2LayoutService";
 import { getMushafNavigationTarget } from "@/services/MushafSpreadPlanner";
@@ -568,7 +569,7 @@ export default function QuranReaderScreen({
             <div className="mushaf-spread-measure" style={stageStyle}>
               {!isPrimaryPageReady || !mushafPlan || !controlLayout ? (
                 <div className="mushaf-spread-loader" role="status" aria-live="polite">
-                  <Loader2 className={`animate-spin ${activeTheme.accent}`} size={40} />
+                  <SakeenahLineSpinner size={40} color={activeTheme.accent} label="جارٍ تحميل صفحة القرآن" />
                   <span className={`text-xs font-sans opacity-60 ${activeTheme.accent}`}>
                     {isLoading || !pageData
                       ? "جاري تحميل الصفحة..."
@@ -1000,7 +1001,7 @@ export default function QuranReaderScreen({
                       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                           {tafsirLoading ? (
                               <div className="flex justify-center py-8">
-                                  <Loader2 className={`animate-spin ${activeTheme.accent}`} size={32} />
+                                  <SakeenahLineSpinner size={32} color={activeTheme.accent} label="جارٍ تحميل التفسير" />
                               </div>
                           ) : (
                               <div className="text-right" dir="rtl">

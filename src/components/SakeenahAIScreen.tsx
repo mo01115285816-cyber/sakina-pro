@@ -18,6 +18,7 @@ import {
   type ConversationShareResult,
 } from "@/services/sakeenah-sharing";
 import { supabaseKey, supabaseUrl } from "@/services/supabase-client";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowUp,
@@ -26,7 +27,6 @@ import {
   PanelLeftOpen,
   X,
   Trash2,
-  Loader2,
   ChevronDown,
   ChevronUp,
   AlertCircle,
@@ -970,7 +970,7 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
               <div className="flex-1 overflow-y-auto px-3 pb-4 pt-4 hide-scrollbar">
                 {isConversationsLoading || isConversationLoading ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-[12px] font-bold text-[#7f6a55]">
-                    <Loader2 size={16} className="animate-spin text-[#b88a4f]" />
+                    <SakeenahLineSpinner size={16} color="#b88a4f" label="جارٍ تحميل المحادثات" />
                     <span>جارٍ تحميل المحادثات</span>
                   </div>
                 ) : conversations.length === 0 ? (

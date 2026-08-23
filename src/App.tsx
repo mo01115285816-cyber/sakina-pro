@@ -13,6 +13,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthScreen from "@/components/AuthScreen";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import type { AuthUser } from "@/services/auth-service";
 import {
   getCurrentSession,
@@ -139,7 +140,7 @@ function ScreenLoader({ label }: { label: string }) {
       className="flex min-h-[100dvh] w-full items-center justify-center bg-[#ece7de] text-[#7f6a55]"
     >
       <div className="flex flex-col items-center gap-4 text-center">
-        <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#b88a4f]/25 border-t-[#b88a4f]" aria-hidden="true" />
+        <SakeenahLineSpinner size={28} color="#b88a4f" label={label} />
         <span className="text-sm font-bold">{label}</span>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause, X } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
 import { surahNames } from "@/data/surahNames";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { RadioStation } from "@/types/radio";
 
 // Import our new independent screens
@@ -578,7 +579,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
           </>
         ) : isQuranDownloaded === null ? (
           <div className="w-full h-[80vh] flex items-center justify-center">
-             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin border-[#b88a4f]"></div>
+             <SakeenahLineSpinner size={32} color="#b88a4f" label="جارٍ فحص حالة المصحف" />
           </div>
         ) : isQuranDownloaded === false ? (
           <QuranDownloadScreen

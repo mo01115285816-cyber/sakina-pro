@@ -9,13 +9,13 @@ import {
   Download,
   Check,
   Trash2,
-  Loader2,
   X,
 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { FileTransfer } from "@capacitor/file-transfer";
 import type { MuezzinTrack } from "@/types/prayer-settings";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { MUEZZIN_LIST } from "@/types/prayer-settings";
 
 interface MuezzinSelectorSectionProps {
@@ -343,7 +343,7 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
 
                   {isDownloading ? (
                     <div className="w-8.5 h-8.5 rounded-full bg-[#f7f2ea] flex items-center justify-center text-[#b88a4f] border border-[#e6dccf]">
-                      <Loader2 size={13} className="animate-spin" />
+                      <SakeenahLineSpinner size={16} color="#b88a4f" label="جارٍ تنزيل المؤذن" />
                     </div>
                   ) : isDownloaded ? (
                     <button

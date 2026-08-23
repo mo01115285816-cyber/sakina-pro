@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import SakeenahLineSpinner from '@/components/SakeenahLineSpinner';
 import { prefetchQcfFont } from '@/hooks/useQcfFont';
 import { MushafQcfV2LayoutService } from '@/services/MushafQcfV2LayoutService';
 import type { MushafQcfV2Page, MushafQcfV2Word } from '@/services/MushafQcfV2LayoutService';
@@ -121,7 +122,7 @@ export default function MushafSpreadSurface({
             </>
           ) : (
             <>
-              <Loader2 className={`animate-spin ${loadingAccentClassName}`} size={40} />
+              <SakeenahLineSpinner size={40} color="currentColor" label="جارٍ تجهيز صفحات المصحف" />
               <span className="text-xs font-sans opacity-60">جاري تجهيز صفحات المصحف...</span>
             </>
           )}

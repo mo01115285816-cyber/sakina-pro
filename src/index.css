@@ -679,3 +679,46 @@
   letter-spacing: 0;
   user-select: none;
 }
+
+
+/* Shared iOS-style line spinner from the supplied reference HTML. */
+.sakeenah-line-spinner {
+  position: relative;
+  display: inline-block;
+  width: var(--sakeenah-spinner-size);
+  height: var(--sakeenah-spinner-size);
+  flex: 0 0 var(--sakeenah-spinner-size);
+  overflow: visible;
+  vertical-align: middle;
+}
+
+.sakeenah-line-spinner__bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--sakeenah-spinner-bar-width);
+  height: var(--sakeenah-spinner-bar-height);
+  border-radius: 999px;
+  background: var(--sakeenah-spinner-color);
+  transform: translate(-50%, -50%) rotate(calc(var(--sakeenah-spinner-index) * 30deg)) translateY(calc(-1 * var(--sakeenah-spinner-radius)));
+  transform-origin: center;
+  animation: sakeenah-spinner-fade var(--sakeenah-spinner-duration) linear infinite;
+  animation-delay: calc(var(--sakeenah-spinner-index) * (var(--sakeenah-spinner-duration) / -12));
+}
+
+@keyframes sakeenah-spinner-fade {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakeenah-line-spinner__bar {
+    animation-duration: 1.8s;
+  }
+}

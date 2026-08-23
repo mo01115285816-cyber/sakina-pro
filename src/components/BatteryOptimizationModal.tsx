@@ -3,6 +3,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Settings, Clock, Bell, Check } from 'lucide-react';
 import { PrayerAlarmService } from '@/services/PrayerAlarmService';
+import SakeenahLineSpinner from '@/components/SakeenahLineSpinner';
 import { PrayerNotificationsService } from '@/services/PrayerNotificationsService';
 
 interface PermissionStep {
@@ -198,7 +199,7 @@ export default function BatteryOptimizationModal({
               className="flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-[#2b1a10] text-[15px] font-black text-[#fff9f1] shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
             >
               {isProcessing ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#fff9f1]/30 border-t-[#fff9f1]" />
+                <SakeenahLineSpinner size={20} color="#fff9f1" label="جارٍ التنفيذ" />
               ) : (
                 <>
                   {currentRequiredStep.id === 'notifications' && notificationBlocked ? <Settings size={18} /> : <Settings size={18} />}

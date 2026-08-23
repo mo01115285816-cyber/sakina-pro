@@ -10,6 +10,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, ChevronRight, MapPin } from "lucide-react";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 
 // Fix leaflet default icon issue
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
@@ -281,7 +282,7 @@ export default function MapLocationPicker({
           />
           {isSearching && (
             <div className="absolute left-4 top-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-[#b88a4f] border-t-transparent rounded-full animate-spin" />
+              <SakeenahLineSpinner size={16} color="#b88a4f" label="جارٍ البحث" />
             </div>
           )}
 

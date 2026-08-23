@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type InputHTMLAttributes } from "react";
 import type { User } from "@supabase/supabase-js";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import {
   sendPasswordReset,
   signInWithEmail,
@@ -224,7 +225,7 @@ export default function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps)
             disabled={loading || googleLoading}
             className="mt-5 flex h-12 w-full items-center justify-center rounded-full bg-[#2b1a10] px-5 text-[14px] font-black text-[#f7f2ea] shadow-[0_14px_24px_-16px_rgba(43,26,16,0.85)] transition-[transform,background-color,box-shadow] duration-200 hover:bg-[#3a2417] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ece7de] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#f7f2ea]/35 border-t-[#f7f2ea]" aria-label="جارٍ التنفيذ" /> : mode === "login" ? "تسجيل الدخول" : "إنشاء الحساب"}
+            {loading ? <SakeenahLineSpinner size={20} color="#f7f2ea" label="جارٍ التنفيذ" /> : mode === "login" ? "تسجيل الدخول" : "إنشاء الحساب"}
           </button>
 
           <div className="my-4 flex items-center gap-3 text-[11px] font-bold text-[#968a7e]">
@@ -239,7 +240,7 @@ export default function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps)
             disabled={loading || googleLoading}
             className="cut-crystal-capsule flex h-11 w-full items-center justify-center gap-3 rounded-full bg-[#f7f2ea]/70 text-[13px] font-black text-[#2b1a10] transition-[transform,background-color] duration-200 hover:bg-[#fffdf9] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {googleLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#b88a4f]/30 border-t-[#b88a4f]" aria-label="جارٍ فتح Google" /> : <GoogleIcon />}
+            {googleLoading ? <SakeenahLineSpinner size={20} color="#b88a4f" label="جارٍ فتح Google" /> : <GoogleIcon />}
             المتابعة باستخدام Google
           </button>
         </form>

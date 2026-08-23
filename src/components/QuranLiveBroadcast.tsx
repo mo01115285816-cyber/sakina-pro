@@ -5,11 +5,11 @@ import {
   Pause,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Circle,
   Square,
 } from "lucide-react";
 import { RadioStation } from "@/types/radio";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { radioStations } from "@/data/radioStations";
 import type { RadioCaptureState } from "@/services/radioCaptureService";
 
@@ -160,7 +160,7 @@ export default function QuranLiveBroadcast({
               }`}
             >
               {radioCaptureState === "saving" ? (
-                <Loader2 size={11} className="animate-spin" />
+                <SakeenahLineSpinner size={14} color="currentColor" label="جارٍ حفظ التسجيل" />
               ) : radioCaptureState === "recording" ? (
                 <Square size={9} fill="currentColor" />
               ) : (
@@ -273,10 +273,7 @@ export default function QuranLiveBroadcast({
                 >
                   {isLoading && isActiveAndPlaying ? (
                     <>
-                      <Loader2
-                        size={11}
-                        className="animate-spin text-white shrink-0"
-                      />
+                      <SakeenahLineSpinner size={14} color="#ffffff" label="جارٍ الاتصال بالبث" className="shrink-0" />
                       <span>جاري الاتصال...</span>
                     </>
                   ) : isActiveAndPlaying ? (

@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import QuranLiveBroadcast from "./QuranLiveBroadcast";
 import { RadioStation } from "@/types/radio";
 import type { RadioCaptureState } from "@/services/radioCaptureService";
@@ -509,7 +510,7 @@ export default function QuranRecitersScreen({
 
         {isLoading && reciters.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <div className="w-10 h-10 border-4 border-[#b88a4f] border-t-transparent rounded-full animate-spin"></div>
+            <SakeenahLineSpinner size={40} color="#b88a4f" label="جارٍ تحميل قائمة القراء" />
             <p className="text-[14px] text-[#7f6a55] font-bold">
               جاري تحميل قائمة القراء...
             </p>
@@ -522,7 +523,7 @@ export default function QuranRecitersScreen({
           <div className="space-y-3.5">
             {isLoading && (
               <div className="flex items-center justify-center gap-2 py-2.5 bg-[#b88a4f]/5 border border-[#b88a4f]/10 rounded-2xl text-[12px] text-[#b88a4f] font-bold mb-3 animate-pulse">
-                <div className="w-3.5 h-3.5 border-2 border-[#b88a4f] border-t-transparent rounded-full animate-spin"></div>
+                <SakeenahLineSpinner size={14} color="#b88a4f" label="جارٍ تحديث قائمة القراء" />
                 <span>جاري تحديث قائمة القراء كاملة...</span>
               </div>
             )}
