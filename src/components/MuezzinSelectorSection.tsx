@@ -14,13 +14,20 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { FileTransfer } from "@capacitor/file-transfer";
-import type { MuezzinTrack } from "@/types/prayer-settings";
+import type { MuezzinTrack, PrayerSettingsId } from "@/types/prayer-settings";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { MUEZZIN_LIST } from "@/types/prayer-settings";
 
 interface MuezzinSelectorSectionProps {
+  prayerKey: PrayerSettingsId;
   selectedMuezzinId?: string;
   onSelect: (muezzin: MuezzinTrack) => void;
+}
+
+const MUEZZIN_CACHE_NAME = "sakeenah-azan-cache-v2";
+
+function muezzinCacheKey(fileName: string): string {
+  return new URL(`/__sakeenah_muezzin__/${encodeURIComponent(fileName)}`, window.location.origin).toString();
 }
 
 async function isMuezzinCached(fileName: string): Promise<boolean> {
@@ -34,8 +41,8 @@ async function isMuezzinCached(fileName: string): Promise<boolean> {
   }
 
   try {
-    const cache = await caches.open("sakeenah-azan-cache-v1");
-    const response = await cache.match(`muezzin://${fileName}`);
+    const cache = await caches.open(MUEZZIN_CACHE_NAME);
+    const response = await cache.match(muezzinCacheKey(fileName));
     return !!response;
   } catch {
     return false;
@@ -51,15 +58,15 @@ async function getMuezzinPlaybackUrl(track: MuezzinTrack, isDownloaded: boolean)
         path: `muezzins/${track.fileName}`,
         directory: Directory.Data,
       });
-      return result.uri;
+      return Capacitor.convertFileSrc(result.uri);
     } catch {
       return track.url;
     }
   }
 
   try {
-    const cache = await caches.open("sakeenah-azan-cache-v1");
-    const response = await cache.match(`muezzin://${track.fileName}`);
+    const cache = await caches.open(MUEZZIN_CACHE_NAME);
+    const response = await cache.match(muezzinCacheKey(track.fileName));
     if (!response) return track.url;
     const blob = await response.blob();
     return URL.createObjectURL(blob);
@@ -80,16 +87,36 @@ async function downloadMuezzinAudio(track: MuezzinTrack): Promise<void> {
       path: `muezzins/${track.fileName}`,
       directory: Directory.Data,
     });
-    await FileTransfer.downloadFile({
-      url: track.url,
-      path: destination.uri,
-    });
+    try {
+      await FileTransfer.downloadFile({
+        url: track.url,
+        path: destination.uri,
+      });
+      const saved = await Filesystem.stat({
+        path: `muezzins/${track.fileName}`,
+        directory: Directory.Data,
+      });
+      if (!saved.size || saved.size < 1024) {
+        throw new Error("تم تنزيل ملف مؤذن فارغ أو غير مكتمل");
+      }
+    } catch (error) {
+      try {
+        await Filesystem.deleteFile({ path: `muezzins/${track.fileName}`, directory: Directory.Data });
+      } catch {
+        // Ignore cleanup failure and preserve the original download error.
+      }
+      throw error;
+    }
     return;
   }
 
-  const cache = await caches.open("sakeenah-azan-cache-v1");
-  const response = await fetch(track.url);
-  await cache.put(`muezzin://${track.fileName}`, response);
+    const cache = await caches.open(MUEZZIN_CACHE_NAME);
+    const response = await fetch(track.url, { mode: "cors", cache: "no-store" });
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    if (!response.ok || !contentType.includes("audio/")) {
+      throw new Error(`مصدر صوت المؤذن غير صالح (${response.status || "unknown"})`);
+    }
+    await cache.put(muezzinCacheKey(track.fileName), response.clone());
 }
 
 async function deleteMuezzinAudio(track: MuezzinTrack): Promise<void> {
@@ -103,14 +130,15 @@ async function deleteMuezzinAudio(track: MuezzinTrack): Promise<void> {
   }
 
   try {
-    const cache = await caches.open("sakeenah-azan-cache-v1");
-    await cache.delete(`muezzin://${track.fileName}`);
+    const cache = await caches.open(MUEZZIN_CACHE_NAME);
+    await cache.delete(muezzinCacheKey(track.fileName));
   } catch {
     // Cache may be unavailable.
   }
 }
 
 export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection({
+  prayerKey,
   selectedMuezzinId,
   onSelect,
 }: MuezzinSelectorSectionProps) {
@@ -167,7 +195,8 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
           objectUrlRef.current = null;
         }
 
-        const audioUrl = await getMuezzinPlaybackUrl(track, !!downloadedIds[track.id]);
+        const isDownloaded = !!downloadedIds[track.id];
+        const audioUrl = await getMuezzinPlaybackUrl(track, isDownloaded);
         if (audioUrl.startsWith("blob:")) objectUrlRef.current = audioUrl;
 
         const audio = new Audio(audioUrl);
@@ -180,16 +209,16 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
 
         // Save the selection via PrayerAlarmService when playing
         const isNative = Capacitor.isNativePlatform();
-        if (isNative) {
+        if (isNative && isDownloaded) {
           const { PrayerAlarmService } = await import("@/services/PrayerAlarmService");
-          await PrayerAlarmService.saveSelectedMuezzin(track.id, track.fileName);
+          await PrayerAlarmService.saveSelectedMuezzin(prayerKey, track.id, track.fileName);
         }
       } catch (err) {
         console.warn("Error in playing preview:", err);
         setPlayingId(null);
       }
     },
-    [playingId, downloadedIds],
+    [playingId, downloadedIds, prayerKey],
   );
 
   const handleDownload = useCallback(async (track: MuezzinTrack, e: React.MouseEvent) => {
@@ -205,7 +234,7 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
       const isNative = Capacitor.isNativePlatform();
       if (isNative) {
         const { PrayerAlarmService } = await import("@/services/PrayerAlarmService");
-        await PrayerAlarmService.saveSelectedMuezzin(track.id, track.fileName);
+        await PrayerAlarmService.saveSelectedMuezzin(prayerKey, track.id, track.fileName);
       }
 
       setDownloadedIds((prev) => ({ ...prev, [track.id]: true }));
@@ -214,7 +243,7 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
     } finally {
       setDownloadingIds((prev) => ({ ...prev, [track.id]: false }));
     }
-  }, [downloadedIds, downloadingIds]);
+  }, [downloadedIds, downloadingIds, prayerKey]);
 
   const handleDelete = useCallback(async (track: MuezzinTrack, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -290,7 +319,14 @@ export const MuezzinSelectorSection = React.memo(function MuezzinSelectorSection
             return (
               <div
                 key={track.id}
-                onClick={() => onSelect(track)}
+                onClick={() => {
+                  onSelect(track);
+                  if (Capacitor.isNativePlatform() && downloadedIds[track.id]) {
+                    void import("@/services/PrayerAlarmService").then(({ PrayerAlarmService }) =>
+                      PrayerAlarmService.saveSelectedMuezzin(prayerKey, track.id, track.fileName),
+                    );
+                  }
+                }}
                 className={`w-full flex items-center justify-between p-4 rounded-[22px] border backdrop-blur-md transition-all duration-200 cursor-pointer active:scale-[0.99] ${
                   isSelected
                     ? "bg-[#b88a4f]/10 border-[#b88a4f] shadow-[0_4px_16px_rgba(184,138,79,0.08)]"

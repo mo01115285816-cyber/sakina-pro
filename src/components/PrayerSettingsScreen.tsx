@@ -147,8 +147,7 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
   const headerTitle = `${prayerDisplayName} الإعدادات`;
 
   const isMuezzinVisible =
-    currentPrefs.enabled &&
-    (currentPrefs.mode === "azan_short" || currentPrefs.mode === "azan_full");
+    currentPrefs.enabled && currentPrefs.mode === "azan_full";
 
   return (
     <div
@@ -370,6 +369,7 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
               className="overflow-hidden"
             >
               <MuezzinSelectorSection
+                prayerKey={prayerId}
                 selectedMuezzinId={currentPrefs.selectedMuezzinId}
                 onSelect={handleSelectMuezzin}
               />

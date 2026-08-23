@@ -54,6 +54,7 @@ class AdhanPlayerService : Service() {
         private const val EXTRA_PRAYER_NAME = "prayer_name"
         private const val EXTRA_NOTIFICATION_BODY = "notification_body"
         private const val EXTRA_MUEZZIN_URI = "muezzin_uri"
+        private const val EXTRA_USE_SELECTED_MUEZZIN = "use_selected_muezzin"
         private const val EXTRA_NOTIFICATION_ID = "notification_id"
 
         fun getNotificationId(prayerKey: String): Int {
@@ -65,13 +66,15 @@ class AdhanPlayerService : Service() {
             prayerKey: String,
             prayerName: String,
             notificationBody: String,
-            muezzinUri: String? = null
+            muezzinUri: String? = null,
+            useSelectedMuezzin: Boolean = true,
         ) {
             val intent = Intent(context, AdhanPlayerService::class.java).apply {
                 putExtra(EXTRA_PRAYER_KEY, prayerKey)
                 putExtra(EXTRA_PRAYER_NAME, prayerName)
                 putExtra(EXTRA_NOTIFICATION_BODY, notificationBody)
                 muezzinUri?.let { putExtra(EXTRA_MUEZZIN_URI, it) }
+                putExtra(EXTRA_USE_SELECTED_MUEZZIN, useSelectedMuezzin)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -96,6 +99,7 @@ class AdhanPlayerService : Service() {
     private var prayerName: String = ""
     private var notificationBody: String = ""
     private var muezzinUri: String? = null
+    private var useSelectedMuezzin: Boolean = true
 
     override fun onCreate() {
         super.onCreate()
@@ -107,6 +111,7 @@ class AdhanPlayerService : Service() {
         prayerName = intent?.getStringExtra(EXTRA_PRAYER_NAME) ?: ""
         notificationBody = intent?.getStringExtra(EXTRA_NOTIFICATION_BODY) ?: ""
         muezzinUri = intent?.getStringExtra(EXTRA_MUEZZIN_URI)
+        useSelectedMuezzin = intent?.getBooleanExtra(EXTRA_USE_SELECTED_MUEZZIN, true) ?: true
 
         if (prayerKey.isEmpty()) {
             stopSelf()
@@ -151,13 +156,23 @@ class AdhanPlayerService : Service() {
                         .build()
                 )
 
-                // Prefer an explicitly supplied URI, then the selected local muezzin, then the bundled default.
-                val selectedMuezzinUri = muezzinUri?.let(Uri::parse)
-                    ?: MuezzinHelper.getSelectedMuezzinUri(this@AdhanPlayerService)
-
-                val uri = selectedMuezzinUri ?: Uri.parse("android.resource://${packageName}/${R.raw.azan}")
-
-                setDataSource(this@AdhanPlayerService, uri)
+                // For scheduled prayer alarms, prefer the selected local file for this prayer.
+                // The explicit URI remains available for manual/plugin playback only.
+                val selectedMuezzinFile = if (useSelectedMuezzin) {
+                    MuezzinHelper.getSelectedMuezzinFile(
+                        this@AdhanPlayerService,
+                        prayerKey,
+                    )
+                } else {
+                    null
+                }
+                if (selectedMuezzinFile != null) {
+                    setDataSource(selectedMuezzinFile.absolutePath)
+                } else {
+                    val selectedMuezzinUri = muezzinUri?.let(Uri::parse)
+                    val uri = selectedMuezzinUri ?: Uri.parse("android.resource://${packageName}/${R.raw.azan}")
+                    setDataSource(this@AdhanPlayerService, uri)
+                }
                 isLooping = false
 
                 setOnCompletionListener {

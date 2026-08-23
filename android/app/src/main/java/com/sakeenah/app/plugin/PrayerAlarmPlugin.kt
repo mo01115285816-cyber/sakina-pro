@@ -284,18 +284,34 @@ class PrayerAlarmPlugin : Plugin() {
     @PluginMethod
     fun saveSelectedMuezzin(call: PluginCall) {
         try {
+            val prayerKey = call.getString("prayerKey") ?: ""
             val muezzinId = call.getString("muezzinId") ?: ""
             val fileName = call.getString("fileName") ?: ""
 
-            if (muezzinId.isEmpty() || fileName.isEmpty()) {
-                call.reject("Missing required parameters: muezzinId, fileName")
+            if (prayerKey.isEmpty() || muezzinId.isEmpty() || fileName.isEmpty()) {
+                call.reject("Missing required parameters: prayerKey, muezzinId, fileName")
                 return
             }
 
-            MuezzinHelper.saveSelectedMuezzin(context, muezzinId, fileName)
+            MuezzinHelper.saveSelectedMuezzin(context, prayerKey, muezzinId, fileName)
             call.resolve(JSObject().apply { put("success", true) })
         } catch (e: Exception) {
             call.reject("Failed to save selected muezzin: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun clearSelectedMuezzin(call: PluginCall) {
+        try {
+            val prayerKey = call.getString("prayerKey") ?: ""
+            if (prayerKey.isEmpty()) {
+                call.reject("Missing required parameter: prayerKey")
+                return
+            }
+            MuezzinHelper.clearSelectedMuezzin(context, prayerKey)
+            call.resolve(JSObject().apply { put("success", true) })
+        } catch (e: Exception) {
+            call.reject("Failed to clear selected muezzin: ${e.message}")
         }
     }
 

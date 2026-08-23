@@ -102,7 +102,7 @@ export class PrayerNotificationsService {
             ...prayer,
             key: prayer.key as PrayerSchedule['key'],
             schedulePrayerTime: prayerTimeNotificationsEnabled && enabled,
-            schedulePrePrayer: prePrayerRemindersEnabled,
+            schedulePrePrayer: prePrayerRemindersEnabled && enabled,
           };
         });
 

@@ -169,14 +169,26 @@ class PrayerAlarmServiceImpl {
    * @param fileName The muezzin's audio file name
    * @returns true if saved successfully
    */
-  async saveSelectedMuezzin(muezzinId: string, fileName: string): Promise<boolean> {
+  async saveSelectedMuezzin(prayerKey: string, muezzinId: string, fileName: string): Promise<boolean> {
     if (!this.isNative) return false;
 
     try {
-      const result = await this.callPlugin('saveSelectedMuezzin', { muezzinId, fileName });
+      const result = await this.callPlugin('saveSelectedMuezzin', { prayerKey, muezzinId, fileName });
       return result?.success ?? false;
     } catch (e) {
       console.warn('PrayerAlarmService.saveSelectedMuezzin failed:', e);
+      return false;
+    }
+  }
+
+  async clearSelectedMuezzin(prayerKey: string): Promise<boolean> {
+    if (!this.isNative) return false;
+
+    try {
+      const result = await this.callPlugin('clearSelectedMuezzin', { prayerKey });
+      return result?.success ?? false;
+    } catch (e) {
+      console.warn('PrayerAlarmService.clearSelectedMuezzin failed:', e);
       return false;
     }
   }

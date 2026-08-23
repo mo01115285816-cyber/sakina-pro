@@ -13,7 +13,6 @@ import com.sakeenah.app.MainActivity
 import com.sakeenah.app.R
 import com.sakeenah.app.service.CountdownForegroundService
 import com.sakeenah.app.service.AdhanPlayerService
-import com.sakeenah.app.data.AudioStateHolder
 import com.sakeenah.app.util.PrayerPreferencesReader
 
 /**
@@ -75,14 +74,15 @@ class AlarmReceiver : BroadcastReceiver() {
                 val randomReflection = getReflectionsForPrayer(prayerKey).randomOrNull() ?: ""
 
                 if (mode == "azan_short" || mode == "azan_full") {
-                    // Get the selected muezzin URI from AudioStateHolder
-                    val muezzinUri = AudioStateHolder.state.value.artworkUrl.takeIf { it.isNotEmpty() }
+                    // AdhanPlayerService resolves the selected local file by prayer key.
+                    // Do not use Dynamic Island artwork metadata as an audio URI.
                     AdhanPlayerService.start(
                         context,
                         prayerKey,
                         prayerName,
                         randomReflection,
-                        muezzinUri
+                        null,
+                        mode == "azan_full"
                     )
                     Log.d(TAG, "Started adhan player for $prayerName")
                 } else {
