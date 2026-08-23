@@ -66,8 +66,13 @@ export function loadPrayerPreferences(): AllPrayersPreferences {
     const saved = localStorage.getItem('sakeenah_prayer_prefs');
     if (saved) {
       const parsed = JSON.parse(saved) as Partial<AllPrayersPreferences>;
-      // Merge with defaults to handle new keys added in future versions
-      return { ...DEFAULT_PRAYER_PREFERENCES, ...parsed };
+      // Merge with defaults and normalize legacy disabled values to the always-on policy.
+      return Object.fromEntries(
+        Object.entries({ ...DEFAULT_PRAYER_PREFERENCES, ...parsed }).map(([key, pref]) => [
+          key,
+          { ...DEFAULT_PRAYER_PREFERENCES[key as PrayerSettingsId], ...pref, enabled: true },
+        ]),
+      ) as AllPrayersPreferences;
     }
   } catch {
     // Corrupted data, use defaults
@@ -78,7 +83,10 @@ export function loadPrayerPreferences(): AllPrayersPreferences {
 /** Save prayer preferences to localStorage */
 export function savePrayerPreferences(prefs: AllPrayersPreferences): void {
   try {
-    localStorage.setItem('sakeenah_prayer_prefs', JSON.stringify(prefs));
+    const normalized = Object.fromEntries(
+      Object.entries(prefs).map(([key, pref]) => [key, { ...pref, enabled: true }]),
+    ) as AllPrayersPreferences;
+    localStorage.setItem('sakeenah_prayer_prefs', JSON.stringify(normalized));
   } catch (e) {
     console.warn('Failed to save prayer preferences:', e);
   }
@@ -96,23 +104,20 @@ export function prayerKeyToSettingsId(key: string): PrayerSettingsId | null {
   return mapping[key] ?? null;
 }
 
-/** Audio choices whose labels and URLs match the published PrayTimes collection. */
+/** Verified audio choices with source labels and explicit reuse metadata. */
 export const MUEZZIN_LIST: MuezzinTrack[] = [
-  { id: 'abdul_basit', name: 'عبد الباسط', url: 'https://praytimes.org/audio/sunni/Abdul-Basit.mp3', fileName: 'abdul_basit_azan.mp3' },
-  { id: 'abdul_ghaffar', name: 'عبد الغفار', url: 'https://praytimes.org/audio/sunni/Abdul-Ghaffar.mp3', fileName: 'abdul_ghaffar_azan.mp3' },
-  { id: 'abdul_hakam', name: 'عبد الحكيم', url: 'https://praytimes.org/audio/sunni/Abdul-Hakam.mp3', fileName: 'abdul_hakam_azan.mp3' },
-  { id: 'adhan_alaqsa', name: 'أذان الأقصى', url: 'https://praytimes.org/audio/sunni/Adhan-Alaqsa.mp3', fileName: 'adhan_alaqsa.mp3' },
-  { id: 'adhan_egypt', name: 'أذان مصر', url: 'https://praytimes.org/audio/sunni/Adhan-Egypt.mp3', fileName: 'adhan_egypt.mp3' },
-  { id: 'adhan_halab', name: 'أذان حلب', url: 'https://praytimes.org/audio/sunni/Adhan-Halab.mp3', fileName: 'adhan_halab.mp3' },
-  { id: 'adhan_madinah', name: 'أذان المدينة', url: 'https://praytimes.org/audio/sunni/Adhan-Madinah.mp3', fileName: 'adhan_madinah.mp3' },
-  { id: 'adhan_makkah', name: 'أذان مكة', url: 'https://praytimes.org/audio/sunni/Adhan-Makkah.mp3', fileName: 'adhan_makkah.mp3' },
-  { id: 'al_hussaini', name: 'الحسيني', url: 'https://praytimes.org/audio/sunni/Al-Hussaini.mp3', fileName: 'al_hussaini_azan.mp3' },
-  { id: 'bakir_bash', name: 'باكير باش', url: 'https://praytimes.org/audio/sunni/Bakir-Bash.mp3', fileName: 'bakir_bash_azan.mp3' },
-  { id: 'hafez', name: 'حافظ', url: 'https://praytimes.org/audio/sunni/Hafez.mp3', fileName: 'hafez_azan.mp3' },
-  { id: 'hafiz_murad', name: 'حافظ مراد', url: 'https://praytimes.org/audio/sunni/Hafiz-Murad.mp3', fileName: 'hafiz_murad_azan.mp3' },
-  { id: 'minshawi', name: 'المنشاوي', url: 'https://praytimes.org/audio/sunni/Minshawi.mp3', fileName: 'minshawi_azan.mp3' },
-  { id: 'naghshbandi', name: 'نقشبندي', url: 'https://praytimes.org/audio/sunni/Naghshbandi.mp3', fileName: 'naghshbandi_azan.mp3' },
-  { id: 'saber', name: 'صابر', url: 'https://praytimes.org/audio/sunni/Saber.mp3', fileName: 'saber_azan.mp3' },
-  { id: 'sharif_doman', name: 'شريف دومان', url: 'https://praytimes.org/audio/sunni/Sharif-Doman.mp3', fileName: 'sharif_doman_azan.mp3' },
-  { id: 'yusuf_islam', name: 'يوسف إسلام', url: 'https://praytimes.org/audio/sunni/Yusuf-Islam.mp3', fileName: 'yusuf_islam_azan.mp3' },
+  {
+    id: 'aqib_azeez',
+    name: 'عاقب عزيز — أذان كامل',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/7/7d/The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3',
+    fileName: 'aqib_azeez_azan.mp3',
+    duration: '1:27',
+  },
+  {
+    id: 'beautiful_adhan',
+    name: 'أذان جميل — تسجيل مستقل',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/b/b0/Beautiful_adhan.ogg',
+    fileName: 'beautiful_adhan.ogg',
+    duration: '2:34',
+  },
 ];

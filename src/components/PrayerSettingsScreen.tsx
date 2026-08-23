@@ -57,9 +57,11 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
   onClose,
 }: PrayerSettingsScreenProps) {
   // Original a4b380c logic: edit the shared AllPrayersPreferences object and save via parent.
-  const [localPrefs, setLocalPrefs] = useState<AllPrayersPreferences>(() => ({
-    ...preferences,
-  }));
+  const [localPrefs, setLocalPrefs] = useState<AllPrayersPreferences>(() =>
+    Object.fromEntries(
+      Object.entries(preferences).map(([key, pref]) => [key, { ...pref, enabled: true }]),
+    ) as AllPrayersPreferences,
+  );
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
   const currentPrefs = localPrefs[prayerId];
@@ -118,17 +120,14 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
   }, [localPrefs, onSave, onClose]);
 
   const handleDiscardAndClose = useCallback(() => {
-    setLocalPrefs({ ...preferences });
+    setLocalPrefs(
+      Object.fromEntries(
+        Object.entries(preferences).map(([key, pref]) => [key, { ...pref, enabled: true }]),
+      ) as AllPrayersPreferences,
+    );
     setShowUnsavedModal(false);
     onClose();
   }, [preferences, onClose]);
-
-  const handleToggleEnabled = useCallback(
-    (val: boolean) => {
-      updatePref({ enabled: val });
-    },
-    [updatePref],
-  );
 
   const handleSelectMode = useCallback(
     (mode: PrayerNotificationMode) => {
@@ -147,7 +146,7 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
   const headerTitle = `${prayerDisplayName} الإعدادات`;
 
   const isMuezzinVisible =
-    currentPrefs.enabled && currentPrefs.mode === "azan_full";
+    currentPrefs.mode === "azan_short" || currentPrefs.mode === "azan_full";
 
   return (
     <div
@@ -176,32 +175,23 @@ export const PrayerSettingsScreen = React.memo(function PrayerSettingsScreen({
       </div>
 
       <div className="relative z-10 flex flex-col gap-4">
-        {/* ── TOGGLE CARD: إشعارات الصلاة ── */}
-        <div className="cut-crystal-panel rounded-[28px] p-5 flex items-center justify-between shadow-md">
-          <div className="text-right">
-            <h3 className="text-[14.5px] font-bold text-[#2b1a10] leading-none">
-              إشعارات الصلاة
-            </h3>
-            <p className="text-[11px] font-medium text-[#7f6a55] mt-1.5">
-              استقبل التذكيرات صلاة {prayerDisplayName}.
-            </p>
-          </div>
-          <Switch checked={currentPrefs.enabled} onChange={handleToggleEnabled} />
+        {/* ── ALWAYS-ON STATUS ── */}
+        <div className="cut-crystal-panel rounded-[28px] p-5 shadow-md">
+          <h3 className="text-[14.5px] font-bold text-[#2b1a10] leading-none">
+            تذكيرات الصلاة مفعّلة دائمًا
+          </h3>
+          <p className="text-[11px] font-medium text-[#7f6a55] mt-1.5">
+            ستظل سكينة تذكّرك بوقت صلاة {prayerDisplayName}.
+          </p>
         </div>
 
         {/* ── PREFERENCES CARD: تفضيلات الإشعارات ── */}
-        <div
-          className={`px-2 pt-1 transition-all duration-300 ${!currentPrefs.enabled ? "opacity-45" : ""}`}
-        >
+        <div className="px-2 pt-1 transition-all duration-300">
           <h4 className="text-[13px] font-bold text-[#7f6a55] tracking-wide mr-1">
             تفضيلات التنبيه
           </h4>
         </div>
-        <div
-          className={`cut-crystal-panel rounded-[28px] p-5 transition-all duration-300 shadow-md ${
-            !currentPrefs.enabled ? "opacity-45 pointer-events-none" : ""
-          }`}
-        >
+        <div className="cut-crystal-panel rounded-[28px] p-5 transition-all duration-300 shadow-md">
           <div className="flex flex-col divide-y divide-[#e6dccf]/30">
             <button
               type="button"

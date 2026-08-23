@@ -262,7 +262,7 @@ class PrayerAlarmServiceImpl {
     if (!this.isNative) return false;
 
     try {
-      const result = await this.callPlugin('savePrayerPreference', { prayerKey, enabled, mode });
+      const result = await this.callPlugin('savePrayerPreference', { prayerKey, enabled: true, mode });
       return result?.success ?? false;
     } catch (e) {
       console.warn('PrayerAlarmService.savePrayerPreference failed:', e);

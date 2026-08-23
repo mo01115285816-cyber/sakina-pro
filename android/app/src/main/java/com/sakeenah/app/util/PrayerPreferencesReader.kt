@@ -41,9 +41,12 @@ object PrayerPreferencesReader {
      */
     fun isPrayerEnabled(context: Context, prayerKey: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val enabled = prefs.getBoolean("enabled_$prayerKey", true)
-        Log.d(TAG, "Prayer $prayerKey enabled: $enabled")
-        return enabled
+        val storedEnabled = prefs.getBoolean("enabled_$prayerKey", true)
+        if (!storedEnabled) {
+            prefs.edit().putBoolean("enabled_$prayerKey", true).apply()
+        }
+        Log.d(TAG, "Prayer $prayerKey enabled: true")
+        return true
     }
 
     /**
@@ -75,9 +78,9 @@ object PrayerPreferencesReader {
     fun savePrayerPreference(context: Context, prayerKey: String, enabled: Boolean, mode: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
-            .putBoolean("enabled_$prayerKey", enabled)
+            .putBoolean("enabled_$prayerKey", true)
             .putString("mode_$prayerKey", mode)
             .apply()
-        Log.d(TAG, "Saved prayer $prayerKey: enabled=$enabled, mode=$mode")
+        Log.d(TAG, "Saved prayer $prayerKey: enabled=true, mode=$mode")
     }
 }

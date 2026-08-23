@@ -170,7 +170,8 @@ class AdhanPlayerService : Service() {
                     setDataSource(selectedMuezzinFile.absolutePath)
                 } else {
                     val selectedMuezzinUri = muezzinUri?.let(Uri::parse)
-                    val uri = selectedMuezzinUri ?: Uri.parse("android.resource://${packageName}/${R.raw.azan}")
+                    val defaultResource = if (useSelectedMuezzin) R.raw.azan else R.raw.azan_short
+                    val uri = selectedMuezzinUri ?: Uri.parse("android.resource://${packageName}/$defaultResource")
                     setDataSource(this@AdhanPlayerService, uri)
                 }
                 isLooping = false
