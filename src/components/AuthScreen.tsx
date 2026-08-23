@@ -8,6 +8,7 @@ import {
   signInWithGoogle,
   signUpWithEmail,
 } from "@/services/auth-service";
+import { trackAndroidUsageSignal } from "@/services/android-usage-signals";
 
 type AuthMode = "login" | "signup";
 type LegalView = "terms" | "privacy";
@@ -105,6 +106,10 @@ export default function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps)
         }
       }
     } catch (authError) {
+      void trackAndroidUsageSignal(
+        mode === "login" ? "login_failed" : "app_error",
+        authError instanceof Error ? authError.name : mode === "login" ? "auth_error" : "signup_error",
+      );
       setError(authErrorMessage(authError));
     } finally {
       setLoading(false);
@@ -118,6 +123,7 @@ export default function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps)
     try {
       await signInWithGoogle();
     } catch (authError) {
+      void trackAndroidUsageSignal("login_failed", authError instanceof Error ? authError.name : "google_auth_error");
       setError(authErrorMessage(authError));
       setGoogleLoading(false);
     }

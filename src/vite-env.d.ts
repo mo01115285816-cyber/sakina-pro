@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
   readonly VITE_CLARITY_WEB_PROJECT_ID?: string;
   readonly VITE_CLARITY_ANDROID_PROJECT_ID?: string;
+  readonly VITE_APP_VERSION?: string;
+  readonly VITE_APP_CHANNEL?: "production" | "beta" | "internal";
 }
 
 interface ImportMeta {

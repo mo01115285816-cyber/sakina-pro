@@ -18,6 +18,7 @@ import {
   type ConversationShareResult,
 } from "@/services/sakeenah-sharing";
 import { supabaseKey, supabaseUrl } from "@/services/supabase-client";
+import { trackAndroidUsageSignal } from "@/services/android-usage-signals";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -400,6 +401,7 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
     setStorageError("جاري إنشاء رابط مشاركة متاح للجميع...");
     try {
       const result = await createSakeenahConversationShare(conversation.id);
+      void trackAndroidUsageSignal("share_created");
       setShareResult({ conversation, result });
       setStorageError("تم إنشاء رابط المشاركة. يمكنك مشاركته الآن.");
 
@@ -718,6 +720,7 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
       let conversationId = activeConversationId;
       if (!conversationId) {
         const created = await createSakeenahConversation(trimmed.slice(0, 56));
+        void trackAndroidUsageSignal("conversation_started");
         conversationId = created.id;
         setActiveConversationId(created.id);
         setConversations((prev) => [created, ...prev.filter((item) => item.id !== created.id)]);
@@ -810,10 +813,12 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
         )
       );
       setStorageError(null);
+      void trackAndroidUsageSignal("sakina_request_success");
       await refreshConversations();
 
     } catch (error) {
       console.error("Sakeenah AI error:", error);
+      void trackAndroidUsageSignal("sakina_request_failed", error instanceof Error ? error.name : "request_error");
       setMessages((prev) => {
         const index = prev.findIndex((m) => m.id === aiMsgId);
         if (index !== -1) {

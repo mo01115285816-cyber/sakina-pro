@@ -54,6 +54,7 @@ import { WeatherDisplay } from "@/components/WeatherDisplay";
 import { HadithCard } from "@/components/HadithCard";
 import { PrayerNotificationsService } from "@/services/PrayerNotificationsService";
 import { syncSakeenahClarity } from "@/services/sakeenah-clarity";
+import { trackAndroidUsageSignal } from "@/services/android-usage-signals";
 import {
   createPrayerReminderEvent,
   getReminderRemainingSeconds,
@@ -312,8 +313,11 @@ function AuthenticatedApp() {
     const stopNativeCallback = listenForNativeAuthCallback((session) => {
       if (!disposed) setCurrentUser(session?.user ?? null);
     });
-    const stopAuthSubscription = subscribeToAuthState((_event, session) => {
+    const stopAuthSubscription = subscribeToAuthState((event, session) => {
       if (!disposed) setCurrentUser(session?.user ?? null);
+      if (event === "SIGNED_IN" && session) {
+        void trackAndroidUsageSignal("login_success");
+      }
     });
 
     return () => {
@@ -1686,6 +1690,25 @@ function AuthenticatedApp() {
 
 export default function App() {
   const sharedToken = getPublicShareTokenFromPath();
+
+  useEffect(() => {
+    void trackAndroidUsageSignal("app_open");
+
+    const handleWindowError = (event: ErrorEvent) => {
+      void trackAndroidUsageSignal("app_error", event.error instanceof Error ? event.error.name : "window_error");
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      void trackAndroidUsageSignal("app_error", reason instanceof Error ? reason.name : "unhandled_rejection");
+    };
+
+    window.addEventListener("error", handleWindowError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    return () => {
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, []);
 
   useEffect(() => {
     if (!sharedToken) return;
