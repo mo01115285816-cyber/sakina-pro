@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
-import { HadithBookInfo, HadithChapter, HadithItem } from "../../types/hadith.types";
+import type { HadithBookInfo, HadithChapter, HadithItem } from "../../types/hadith.types";
 
 const router = Router();
 
