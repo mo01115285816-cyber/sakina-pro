@@ -1,7 +1,5 @@
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
-import hadithBooksRouter from "../../src/server/routes/hadith-books";
-
 const app = express();
 
 const defaultAllowedOrigins = new Set([
@@ -41,7 +39,12 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "100kb" }));
-app.use("/api/hadith", hadithBooksRouter);
+
+const hadithAppPromise = import("../../src/server/routes/hadith-books").then(({ default: router }) => {
+  const routeApp = express();
+  routeApp.use("/api/hadith", router);
+  return routeApp;
+});
 
 app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) {
@@ -56,6 +59,17 @@ app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ success: false, error: "Internal server error" });
 });
 
-const handler = (req: Request, res: Response) => app(req, res);
+const handler = async (req: Request, res: Response) => {
+  try {
+    const hadithApp = await hadithAppPromise;
+    hadithApp(req, res);
+  } catch (error) {
+    console.error(
+      "Hadith route initialization error:",
+      error instanceof Error ? error.message : "unknown",
+    );
+    res.status(500).json({ success: false, error: "Hadith route initialization failed" });
+  }
+};
 
 export default handler;
