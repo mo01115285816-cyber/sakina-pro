@@ -70,13 +70,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     routeApp.use("/api/hadith", router);
     routeApp(req, res);
   } catch (error) {
-    console.error(
-      "Hadith route initialization error:",
-      error instanceof Error ? error.message : "unknown",
-    );
+    const message = error instanceof Error ? error.message : "unknown";
+    console.error("Hadith route initialization error:", message);
     sendJson(res, 500, {
       success: false,
       error: "Hadith route initialization failed",
+      detail: message,
     });
   }
 }
