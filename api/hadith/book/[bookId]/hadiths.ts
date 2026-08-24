@@ -1,3 +1,3 @@
-import handler from "../../[...path]";
+import handler from "../../[...path].js";
 
 export default handler;
