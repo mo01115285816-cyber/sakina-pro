@@ -1,4 +1,5 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
+import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import { HadithBookInfo, HadithChapter, HadithItem } from "../../types/hadith.types";
