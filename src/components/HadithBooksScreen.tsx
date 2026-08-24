@@ -1169,7 +1169,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                             <div className="py-2.5 px-1 space-y-2.5">
                               <div className="flex items-center justify-between text-xs font-bold text-[#7f6a55]">
                                 <span className="text-[#2b1a10] text-[11.5px] font-extrabold flex items-center gap-1.5">
-                                  <SakeenahLineSpinner size={18} color="#deab65" label="جارٍ تحميل الكتاب" className="shrink-0" />
+                                  <SakeenahLineSpinner size={32} color="#deab65" label="جارٍ تحميل الكتاب" className="shrink-0" />
                                   جاري التحميل...
                                 </span>
                                 <span className="text-[#deab65] font-black text-[12px]">{indexingProgress}%</span>
@@ -1426,7 +1426,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                                 />
                                 {/* Percentage & Loading Icon */}
                                 <div className="relative z-10 flex items-center justify-center gap-1 text-[10px] font-black text-[#2b1a10]">
-                                  <SakeenahLineSpinner size={18} color="#2b1a10" label="جارٍ تنزيل الكتاب" className="shrink-0" />
+                                  <SakeenahLineSpinner size={32} color="#2b1a10" label="جارٍ تنزيل الكتاب" className="shrink-0" />
                                   <span className="tabular-nums font-mono">{currentPct}%</span>
                                 </div>
                               </div>
@@ -1655,7 +1655,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
 
                             {loadingChapters ? (
                               <div className="py-8 flex items-center justify-center gap-2 text-xs font-bold text-[#7f6a55]">
-                                <SakeenahLineSpinner size={22} color="#deab65" label="جارٍ تحميل فهرس الأبواب" />
+                                <SakeenahLineSpinner size={32} color="#deab65" label="جارٍ تحميل فهرس الأبواب" />
                                 <span>جاري تحميل الفهرس...</span>
                               </div>
                             ) : (
@@ -2057,7 +2057,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
 
             {loadingGlobalSearch ? (
               <div className="py-24 text-center space-y-4 cut-crystal-satin rounded-[26px]">
-                <SakeenahLineSpinner size={44} color="#deab65" label="جارٍ إجراء البحث" className="mx-auto" />
+                <SakeenahLineSpinner size={40} color="#deab65" label="جارٍ إجراء البحث" className="mx-auto" />
                 <p className="text-sm font-bold text-[#7f6a55]">جاري إجراء البحث الفائق في أمهات كتب السنة...</p>
               </div>
             ) : globalSearchResults.length === 0 ? (

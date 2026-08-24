@@ -744,10 +744,9 @@
   top: 50%;
   width: var(--sakeenah-spinner-bar-width);
   height: var(--sakeenah-spinner-bar-height);
-  border-radius: 999px;
+  border-radius: var(--sakeenah-spinner-bar-radius);
   background: var(--sakeenah-spinner-color);
   transform: translate(-50%, -50%) rotate(calc(var(--sakeenah-spinner-index) * 30deg)) translateY(calc(-1 * var(--sakeenah-spinner-radius)));
-  transform-origin: center;
   animation: sakeenah-spinner-fade var(--sakeenah-spinner-duration) linear infinite;
   animation-delay: calc(var(--sakeenah-spinner-index) * (var(--sakeenah-spinner-duration) / -12));
 }
@@ -760,11 +759,5 @@
 
   50% {
     opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sakeenah-line-spinner__bar {
-    animation-duration: 1.8s;
   }
 }

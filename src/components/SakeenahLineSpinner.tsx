@@ -16,15 +16,18 @@ const BAR_INDICES = Array.from({ length: 12 }, (_, index) => index);
  * with staggered opacity rather than a rotating border ring.
  */
 export default function SakeenahLineSpinner({
-  size = 32,
-  color = "#b88a4f",
+  size = 40,
+  color = "#555555",
   duration = "1s",
   label = "جارٍ التحميل",
   className = "",
 }: SakeenahLineSpinnerProps) {
-  const barHeight = Math.max(4, Math.round(size * 0.16));
-  const barWidth = Math.max(1, Math.round(size * 0.045));
-  const radius = `calc(${size}px / 2 - ${barHeight}px / 2 - ${Math.max(1, Math.round(size * 0.1))}px)`;
+  // These values intentionally stay identical to the supplied HTML reference.
+  // Only the outer diameter, color, and duration are configurable.
+  const barWidth = 2;
+  const barHeight = 8;
+  const barRadius = 1;
+  const radius = `calc(${size}px / 2 - ${barHeight}px / 2 - 2px)`;
 
   return (
     <span
@@ -38,6 +41,7 @@ export default function SakeenahLineSpinner({
           "--sakeenah-spinner-duration": duration,
           "--sakeenah-spinner-bar-width": `${barWidth}px`,
           "--sakeenah-spinner-bar-height": `${barHeight}px`,
+          "--sakeenah-spinner-bar-radius": `${barRadius}px`,
           "--sakeenah-spinner-radius": radius,
         } as React.CSSProperties
       }
