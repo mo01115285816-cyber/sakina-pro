@@ -1,6 +1,8 @@
-import cors from "cors";
-import express, { type NextFunction, type Request, type Response } from "express";
-const app = express();
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+export const config = {
+  runtime: "nodejs",
+};
 
 const defaultAllowedOrigins = new Set([
   "https://sakina-design-transplant.vercel.app",
@@ -20,56 +22,61 @@ const allowedOrigins = new Set(
   configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins,
 );
 
-app.disable("x-powered-by");
-app.use((req, res, next) => {
+function setCorsHeaders(req: IncomingMessage, res: ServerResponse) {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "600");
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown) {
+  const payload = JSON.stringify(body);
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Length", Buffer.byteLength(payload));
+  res.end(payload);
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  setCorsHeaders(req, res);
+
   const origin = req.headers.origin;
   if (origin && !allowedOrigins.has(origin)) {
-    res.status(403).json({ success: false, error: "Origin is not allowed" });
-    return;
-  }
-  next();
-});
-app.use(
-  cors({
-    origin: true,
-    methods: ["GET", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-    credentials: false,
-    maxAge: 600,
-  }),
-);
-app.use(express.json({ limit: "100kb" }));
-
-const hadithAppPromise = import("../../src/server/routes/hadith-books").then(({ default: router }) => {
-  const routeApp = express();
-  routeApp.use("/api/hadith", router);
-  return routeApp;
-});
-
-app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
-  if (res.headersSent) {
-    next(error);
+    sendJson(res, 403, { success: false, error: "Origin is not allowed" });
     return;
   }
 
-  console.error(
-    "Hadith API error:",
-    error instanceof Error ? error.message : "unknown",
-  );
-  res.status(500).json({ success: false, error: "Internal server error" });
-});
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
 
-const handler = async (req: Request, res: Response) => {
+  if (req.method !== "GET") {
+    sendJson(res, 405, { success: false, error: "Method not allowed" });
+    return;
+  }
+
   try {
-    const hadithApp = await hadithAppPromise;
-    hadithApp(req, res);
+    const [{ default: express }, { default: router }] = await Promise.all([
+      import("express"),
+      import("../../src/server/routes/hadith-books"),
+    ]);
+    const routeApp = express();
+    routeApp.use("/api/hadith", router);
+    routeApp(req, res);
   } catch (error) {
     console.error(
       "Hadith route initialization error:",
       error instanceof Error ? error.message : "unknown",
     );
-    res.status(500).json({ success: false, error: "Hadith route initialization failed" });
+    sendJson(res, 500, {
+      success: false,
+      error: "Hadith route initialization failed",
+    });
   }
-};
-
-export default handler;
+}
