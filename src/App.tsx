@@ -1603,8 +1603,8 @@ function AuthenticatedApp() {
         !showAsmaAlHusna &&
         activeTab !== "settings" &&
         activeTab !== "sakeenah-ai" && (
-          <nav className="fixed inset-x-0 bottom-6 z-40 flex justify-center pointer-events-none">
-            <div className="pointer-events-auto flex items-center gap-1 rounded-[32px] cut-crystal-capsule px-1.5 py-1.5 shadow-lg">
+          <nav className="fixed inset-x-0 bottom-5 z-40 flex justify-center pointer-events-none px-2">
+            <div className="pointer-events-auto flex items-center gap-1 rounded-[32px] cut-crystal-capsule px-2 py-1.5 shadow-lg max-w-full">
               {[
                 { id: "main", label: "الرئيسية", icon: <HomeIcon /> },
                 {
@@ -1617,12 +1617,12 @@ function AuthenticatedApp() {
                     />
                   ),
                 },
-                { id: "azkar", label: "الأذكار", icon: <AdhkarIcon /> },
                 {
                   id: "hadith",
-                  label: "كتب الحديث",
+                  label: "الكتب",
                   icon: <Library className="h-[17px] w-[17px] text-current" strokeWidth={2} />,
                 },
+                { id: "azkar", label: "الأذكار", icon: <AdhkarIcon /> },
                 {
                   id: "sakeenah-ai",
                   label: "سكينة AI",
@@ -1638,10 +1638,10 @@ function AuthenticatedApp() {
                         setActiveTab(tab.id as TabType);
                       });
                     }}
-                    className={`relative flex items-center gap-2 rounded-[24px] px-5 py-2 transition-colors duration-200 ${
+                    className={`relative flex items-center gap-1.5 rounded-[22px] transition-all duration-200 cursor-pointer ${
                       isActive
-                        ? "text-[#2b1a10]"
-                        : "text-[#7f6a55] hover:bg-[#2b1a10]/5"
+                        ? "px-4 py-2 text-[#2b1a10]"
+                        : "px-3 py-2 text-[#7f6a55] hover:bg-[#2b1a10]/5"
                     }`}
                   >
                     {isActive && (
@@ -1671,7 +1671,7 @@ function AuthenticatedApp() {
                           }}
                           className="relative z-10 overflow-hidden flex items-center"
                         >
-                          <span className="text-[13px] font-bold whitespace-nowrap pl-1">
+                          <span className="text-xs sm:text-[13px] font-bold whitespace-nowrap pr-0.5">
                             {tab.label}
                           </span>
                         </motion.div>
