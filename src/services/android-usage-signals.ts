@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { getCurrentSession } from "./auth-service";
 
 export type AndroidUsageSignalEvent =
   | "app_open"
@@ -14,6 +15,7 @@ export type AndroidUsageConnectionType = "wifi" | "cellular" | "offline";
 export type AndroidUsageChannel = "production" | "beta" | "internal";
 
 export interface AndroidUsageSignal {
+  clientEventId: string;
   event: AndroidUsageSignalEvent;
   occurredAt: string;
   manufacturer: string;
@@ -27,7 +29,13 @@ export interface AndroidUsageSignal {
   errorClass?: string;
 }
 
-export type AndroidUsageSignalTransport = (signal: AndroidUsageSignal) => Promise<void>;
+export type AndroidUsageSignalTransport = (
+  signal: AndroidUsageSignal,
+) => Promise<void>;
+
+/** Official production endpoint approved by the server team for Android telemetry. */
+export const ANDROID_USAGE_SIGNALS_ENDPOINT =
+  "https://sakeenah-console.vercel.app/api/telemetry/events";
 
 interface CordovaDeviceInfo {
   manufacturer?: string;
@@ -45,21 +53,48 @@ declare global {
 let transport: AndroidUsageSignalTransport | null = null;
 let appOpenSent = false;
 
+function createClientEventId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    /[xy]/g,
+    (character) => {
+      const random = Math.random() * 16;
+      const value = character === "x" ? random : (random & 0x3) | 0x8;
+      return Math.floor(value).toString(16);
+    },
+  );
+}
+
 function getConnectionType(): AndroidUsageConnectionType {
   if (typeof navigator === "undefined" || !navigator.onLine) return "offline";
 
-  const connection = (navigator as Navigator & {
-    connection?: { type?: string; effectiveType?: string };
-  }).connection;
-  const type = `${connection?.type ?? connection?.effectiveType ?? ""}`.toLowerCase();
+  const connection = (
+    navigator as Navigator & {
+      connection?: { type?: string; effectiveType?: string };
+    }
+  ).connection;
+  const type =
+    `${connection?.type ?? connection?.effectiveType ?? ""}`.toLowerCase();
 
   if (type.includes("cell")) return "cellular";
   return "wifi";
 }
 
 function getChannel(): AndroidUsageChannel {
-  const configured = String(import.meta.env.VITE_APP_CHANNEL ?? "").trim().toLowerCase();
-  if (configured === "beta" || configured === "internal" || configured === "production") {
+  const configured = String(import.meta.env.VITE_APP_CHANNEL ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    configured === "beta" ||
+    configured === "internal" ||
+    configured === "production"
+  ) {
     return configured;
   }
   return import.meta.env.MODE === "production" ? "production" : "internal";
@@ -67,7 +102,11 @@ function getChannel(): AndroidUsageChannel {
 
 function readDeviceInfo(): Promise<CordovaDeviceInfo | undefined> {
   if (typeof window === "undefined") return Promise.resolve(undefined);
-  if (window.device?.model || window.device?.version || window.device?.manufacturer) {
+  if (
+    window.device?.model ||
+    window.device?.version ||
+    window.device?.manufacturer
+  ) {
     return Promise.resolve(window.device);
   }
 
@@ -85,13 +124,19 @@ function readDeviceInfo(): Promise<CordovaDeviceInfo | undefined> {
   });
 }
 
-async function buildSignal(event: AndroidUsageSignalEvent, errorClass?: string): Promise<AndroidUsageSignal> {
+async function buildSignal(
+  event: AndroidUsageSignalEvent,
+  errorClass?: string,
+): Promise<AndroidUsageSignal> {
   const device = await readDeviceInfo();
-  const language = typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ar")
-    ? "ar"
-    : "en";
+  const language =
+    typeof navigator !== "undefined" &&
+    navigator.language.toLowerCase().startsWith("ar")
+      ? "ar"
+      : "en";
 
   return {
+    clientEventId: createClientEventId(),
     event,
     occurredAt: new Date().toISOString(),
     manufacturer: String(device?.manufacturer ?? "unknown").slice(0, 80),
@@ -107,11 +152,36 @@ async function buildSignal(event: AndroidUsageSignalEvent, errorClass?: string):
 }
 
 /**
- * Registers the server-approved transport. No URL, table, or endpoint is guessed here.
- * The server team can attach the existing authenticated Supabase transport after its
- * signed contract is approved. Until then, events are intentionally dropped.
+ * Creates the approved Android transport using the existing Supabase session.
+ * No user ID, session ID, conversation content, or secret is sent in the payload.
  */
-export function setAndroidUsageSignalTransport(nextTransport: AndroidUsageSignalTransport | null): void {
+export function createAndroidUsageSignalTransport(): AndroidUsageSignalTransport {
+  return async (signal) => {
+    const session = await getCurrentSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) return;
+
+    const response = await fetch(ANDROID_USAGE_SIGNALS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(signal),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Android telemetry request failed with status ${response.status}`,
+      );
+    }
+  };
+}
+
+/** Registers the approved server transport. */
+export function setAndroidUsageSignalTransport(
+  nextTransport: AndroidUsageSignalTransport | null,
+): void {
   transport = nextTransport;
 }
 

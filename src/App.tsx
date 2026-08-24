@@ -54,7 +54,11 @@ import { WeatherDisplay } from "@/components/WeatherDisplay";
 import { HadithCard } from "@/components/HadithCard";
 import { PrayerNotificationsService } from "@/services/PrayerNotificationsService";
 import { syncSakeenahClarity } from "@/services/sakeenah-clarity";
-import { trackAndroidUsageSignal } from "@/services/android-usage-signals";
+import {
+  createAndroidUsageSignalTransport,
+  setAndroidUsageSignalTransport,
+  trackAndroidUsageSignal,
+} from "@/services/android-usage-signals";
 import {
   createPrayerReminderEvent,
   getReminderRemainingSeconds,
@@ -1692,6 +1696,10 @@ export default function App() {
   const sharedToken = getPublicShareTokenFromPath();
 
   useEffect(() => {
+    const nativeTransport = Capacitor.isNativePlatform()
+      ? createAndroidUsageSignalTransport()
+      : null;
+    setAndroidUsageSignalTransport(nativeTransport);
     void trackAndroidUsageSignal("app_open");
 
     const handleWindowError = (event: ErrorEvent) => {
@@ -1707,6 +1715,7 @@ export default function App() {
     return () => {
       window.removeEventListener("error", handleWindowError);
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      setAndroidUsageSignalTransport(null);
     };
   }, []);
 
