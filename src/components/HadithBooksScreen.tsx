@@ -56,6 +56,19 @@ const LAST_READ_STORAGE_KEY = "sakeenah_hadith_last_read_v1";
 const REPORTS_STORAGE_KEY = "sakeenah_hadith_reports_v1";
 const DISCLAIMER_STORAGE_KEY = "sakeenah_hadith_disclaimer_dismissed_v1";
 
+async function readHadithJson<T>(response: Response): Promise<T> {
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`تعذر تحميل بيانات الحديث (رمز ${response.status})`);
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error("استجابة بيانات الحديث غير صالحة");
+  }
+}
+
 interface HadithReport {
   id: string;
   bookId: string;
@@ -420,7 +433,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
     try {
       const res = await fetch("/api/hadith/books");
       if (res.ok) {
-        const data = await res.json();
+        const data = await readHadithJson<{ success?: boolean; books?: HadithBookInfo[] }>(res);
         if (data.success && Array.isArray(data.books)) {
           setBooks(data.books);
           checkOfflineStats(data.books);
@@ -665,7 +678,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
 
       // Fallback to online fetch if not downloaded
       const res = await fetch(`/api/hadith/book/${book.id}`);
-      const data = await res.json();
+      const data = await readHadithJson<{ success?: boolean; chapters?: HadithChapter[] }>(res);
       if (data.success) {
         setChapters(data.chapters || []);
       }
@@ -713,7 +726,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
         }
 
         const res = await fetch(`/api/hadith/book/${bookId}/hadiths?${queryParams.toString()}`);
-        const data: HadithListResponse & { success: boolean; error?: string } = await res.json();
+        const data = await readHadithJson<HadithListResponse & { success: boolean; error?: string }>(res);
 
         if (data.success) {
           setHadiths(data.hadiths);
@@ -797,7 +810,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
   const runOnlineGlobalSearch = async () => {
     try {
       const res = await fetch(`/api/hadith/search?q=${encodeURIComponent(globalSearchQuery.trim())}&limit=40`);
-      const data = await res.json();
+      const data = await readHadithJson<{ success?: boolean; results?: HadithItem[] }>(res);
       if (data.success) {
         setGlobalSearchResults(data.results || []);
       }

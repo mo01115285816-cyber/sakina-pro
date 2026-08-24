@@ -56,4 +56,6 @@ app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ success: false, error: "Internal server error" });
 });
 
-export default app;
+const handler = (req: Request, res: Response) => app(req, res);
+
+export default handler;
