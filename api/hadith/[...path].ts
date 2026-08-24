@@ -21,7 +21,8 @@ type Hadith = {
   bookId: string;
   bookTitle: string;
   hadithnumber: number;
-  arabicnumber: number;
+  arabicnumber: number | string;
+  textAvailable?: boolean;
   chapterId: string;
   chapterTitle: string;
   text: string;
@@ -35,15 +36,15 @@ type Dataset = {
 };
 
 const books: Book[] = [
-  ["bukhari", "صحيح البخاري", "الإمام محمد بن إسماعيل البخاري", "256 هـ", 7563, 97, "أصح كتاب بعد كتاب الله تعالى، جمع فيه الإمام البخاري الأحاديث الصحيحة المسندة عن رسول الله ﷺ.", "الكتب الستة", "ara-bukhari", "author_bukhari.webp"],
-  ["muslim", "صحيح مسلم", "الإمام مسلم بن الحجاج النيسابوري", "261 هـ", 7500, 56, "ثاني أصح كتب الحديث الشريف، امتاز بحسن الترتيب والصياغة والاستيعاب للطرق والأسانيد.", "الكتب الستة", "ara-muslim", "author_muslim.webp"],
-  ["abudawud", "سنن أبي داود", "الإمام أبو داود سليمان بن الأشعث السجستاني", "275 هـ", 5274, 43, "أحد أهم السنن الأربعة، ركز فيه مصنفه على أحاديث الأحكام والسنن الفقهية المرفوعة.", "الكتب الستة", "ara-abudawud", "author_abudawud.webp"],
-  ["tirmidhi", "جامع الترمذي", "الإمام أبو عيسى محمد بن عيسى الترمذي", "279 هـ", 3956, 50, "معروف بالجامع والسنن، تميز بذكر مذاهب الفقهاء وبيان درجات الأحاديث من الصحة والحسن والضعف.", "الكتب الستة", "ara-tirmidhi", "author_tirmidhi.webp"],
-  ["nasai", "سنن النسائي (المجتبى)", "الإمام أحمد بن شعيب النسائي", "303 هـ", 5758, 51, "أشد السنن انتقاءً للرجال وأقلها حديثاً ضعيفاً بعد الصحيحين، اشتمل على الدقائق الفقهية والعلل.", "الكتب الستة", "ara-nasai", "author_nasai.webp"],
-  ["ibnmajah", "سنن ابن ماجه", "الإمام أبو عبد الله محمد بن يزيد ابن ماجه", "273 هـ", 4341, 37, "خاتم الكتب الستة، امتاز بحسن التبويب وكثرة زوائده على الأمهات الخمس من الأحاديث والسنن.", "الكتب الستة", "ara-ibnmajah", "author_ibnmajah.webp"],
-  ["malik", "موطأ الإمام مالك", "الإمام مالك بن أنس الأصبحي", "179 هـ", 1858, 61, "أقدم مدونة حديثية وفقهية جامعة وصلتنا بحالة ممتازة، من أصح الآثار والسنن عن دار الهجرة.", "الموطآت والمسانيد", "ara-malik", "author_malik.webp"],
-  ["nawawi", "الأربعون النووية", "الإمام يحيى بن شرف النووي", "676 هـ", 42, 1, "مجموعة جوامع كلم النبي ﷺ ومباني الإسلام والأحكام التي عليها مدار الدين.", "الأربعينيات والقدسيات", "ara-nawawi", "author_nawawi.webp"],
-  ["qudsi", "الأحاديث القدسية", "مجموعة من الأئمة الحفاظ", "متنوع", 40, 1, "الأحاديث التي يرويها النبي ﷺ عن ربه عز وجل بألفاظ جامعة ترقق القلوب.", "الأربعينيات والقدسيات", "ara-qudsi", "author_qudsiyyah.webp"],
+  ["bukhari", "صحيح البخاري", "الإمام محمد بن إسماعيل البخاري", "256 هـ", 7589, 98, "أصح كتاب بعد كتاب الله تعالى، جمع فيه الإمام البخاري الأحاديث الصحيحة المسندة عن رسول الله ﷺ.", "الكتب الستة", "ara-bukhari", "author_bukhari.webp"],
+  ["muslim", "صحيح مسلم", "الإمام مسلم بن الحجاج النيسابوري", "261 هـ", 7563, 57, "ثاني أصح كتب الحديث الشريف، امتاز بحسن الترتيب والصياغة والاستيعاب للطرق والأسانيد.", "الكتب الستة", "ara-muslim", "author_muslim.webp"],
+  ["abudawud", "سنن أبي داود", "الإمام أبو داود سليمان بن الأشعث السجستاني", "275 هـ", 5274, 44, "أحد أهم السنن الأربعة، ركز فيه مصنفه على أحاديث الأحكام والسنن الفقهية المرفوعة.", "الكتب الستة", "ara-abudawud", "author_abudawud.png"],
+  ["tirmidhi", "جامع الترمذي", "الإمام أبو عيسى محمد بن عيسى الترمذي", "279 هـ", 3998, 50, "معروف بالجامع والسنن، تميز بذكر مذاهب الفقهاء وبيان درجات الأحاديث من الصحة والحسن والضعف.", "الكتب الستة", "ara-tirmidhi", "author_tirmidhi.png"],
+  ["nasai", "سنن النسائي (المجتبى)", "الإمام أحمد بن شعيب النسائي", "303 هـ", 5765, 52, "أشد السنن انتقاءً للرجال وأقلها حديثاً ضعيفاً بعد الصحيحين، اشتمل على الدقائق الفقهية والعلل.", "الكتب الستة", "ara-nasai", "author_nasai.png"],
+  ["ibnmajah", "سنن ابن ماجه", "الإمام أبو عبد الله محمد بن يزيد ابن ماجه", "273 هـ", 4343, 38, "خاتم الكتب الستة، امتاز بحسن التبويب وكثرة زوائده على الأمهات الخمس من الأحاديث والسنن.", "الكتب الستة", "ara-ibnmajah", "author_ibnmajah.png"],
+  ["malik", "موطأ الإمام مالك", "الإمام مالك بن أنس الأصبحي", "179 هـ", 1858, 62, "أقدم مدونة حديثية وفقهية جامعة وصلتنا بحالة ممتازة، من أصح الآثار والسنن عن دار الهجرة.", "الموطآت والمسانيد", "ara-malik", "author_malik.png"],
+  ["nawawi", "الأربعون النووية", "الإمام يحيى بن شرف النووي", "676 هـ", 42, 2, "مجموعة جوامع كلم النبي ﷺ ومباني الإسلام والأحكام التي عليها مدار الدين.", "الأربعينيات والقدسيات", "ara-nawawi", "author_nawawi.png"],
+  ["qudsi", "الأحاديث القدسية", "مجموعة من الأئمة الحفاظ", "متنوع", 40, 2, "الأحاديث التي يرويها النبي ﷺ عن ربه عز وجل بألفاظ جامعة ترقق القلوب.", "الأربعينيات والقدسيات", "ara-qudsi", "author_qudsiyyah.png"],
 ].map(([id, titleArabic, authorArabic, authorDeath, hadithsCount, chaptersCount, description, category, editionSlug, cover] ): Book => ({
   id: id as string,
   titleArabic: titleArabic as string,
@@ -111,47 +112,60 @@ async function getDataset(bookId: string): Promise<Dataset> {
   if (!book) throw new Error("الكتاب غير موجود");
 
   const urls = [
+    `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.min.json`,
     `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.json`,
+    `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.min.json`,
     `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.json`,
   ];
-  let response: Response | null = null;
+  let source: {
+    metadata?: Record<string, unknown>;
+    hadiths?: Array<Record<string, unknown>>;
+  } | null = null;
   for (const url of urls) {
     try {
       const candidate = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (candidate.ok) {
-        response = candidate;
-        break;
-      }
+      if (!candidate.ok) continue;
+      const body = await candidate.text();
+      const parsed = JSON.parse(body) as {
+        metadata?: Record<string, unknown>;
+        hadiths?: Array<Record<string, unknown>>;
+      };
+      if (!Array.isArray(parsed.hadiths) || parsed.hadiths.length === 0) continue;
+      source = parsed;
+      break;
     } catch {
-      // Try the fallback source.
+      // Try the next URL from the same trusted source repository.
     }
   }
-  if (!response) throw new Error("تعذر تحميل بيانات الكتاب");
-
-  const source = (await response.json()) as {
-    metadata?: Record<string, unknown>;
-    hadiths?: Array<Record<string, unknown>>;
-  };
+  if (!source) throw new Error("تعذر تحميل بيانات الكتاب بصيغة JSON صحيحة");
   const metadata = source.metadata ?? {};
   const sections = (metadata.sections ?? metadata.section ?? {}) as Record<string, string>;
-  const hadiths = (source.hadiths ?? []).map((item) => {
-    const reference = item.reference as { book?: number } | undefined;
+  const hadiths = (source.hadiths ?? []).map((item, index) => {
+    const reference = item.reference as { book?: number; hadith?: number } | undefined;
     const sectionId = String(reference?.book ?? "0");
-    const hadithnumber = Number(item.hadithnumber ?? item.arabicnumber ?? 0);
+    const rawHadithNumber = item.hadithnumber ?? item.arabicnumber;
+    const parsedHadithNumber = Number(rawHadithNumber);
+    const hadithnumber = Number.isFinite(parsedHadithNumber) ? parsedHadithNumber : index + 1;
+    const rawArabicNumber = item.arabicnumber ?? item.hadithnumber ?? hadithnumber;
+    const arabicnumber = typeof rawArabicNumber === "string" && rawArabicNumber.trim()
+      ? rawArabicNumber.trim()
+      : Number(rawArabicNumber);
+    const text = typeof item.text === "string" ? item.text : "";
     return {
       bookId: book.id,
       bookTitle: book.titleArabic,
       hadithnumber,
-      arabicnumber: Number(item.arabicnumber ?? hadithnumber),
+      arabicnumber,
       chapterId: sectionId,
       chapterTitle: chapterTitle(book.id, sectionId, sections[sectionId]),
-      text: String(item.text ?? ""),
+      text,
+      textAvailable: text.trim().length > 0,
       grade: Array.isArray(item.grades) && item.grades[0] && typeof item.grades[0] === "object"
         ? String((item.grades[0] as { grade?: string }).grade ?? "")
         : book.id === "bukhari" || book.id === "muslim" ? "صحيح" : undefined,
       reference,
     } satisfies Hadith;
-  }).filter((item) => item.text.trim().length > 0);
+  });
 
   const dataset = { metadata, hadiths };
   cache.set(bookId, dataset);
@@ -212,7 +226,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         const search = (query.get("search") ?? "").trim().toLowerCase();
         let filtered = dataset.hadiths;
         if (chapter !== "all") filtered = filtered.filter((item) => item.chapterId === chapter);
-        if (search) filtered = filtered.filter((item) => item.text.toLowerCase().includes(search) || String(item.hadithnumber) === search || item.chapterTitle.toLowerCase().includes(search));
+        if (search) filtered = filtered.filter((item) => item.text.toLowerCase().includes(search) || String(item.hadithnumber) === search || String(item.arabicnumber) === search || item.chapterTitle.toLowerCase().includes(search));
         const total = filtered.length;
         json(res, 200, {
           success: true,
@@ -238,7 +252,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       for (const book of targetBooks) {
         const dataset = await getDataset(book.id);
         for (const item of dataset.hadiths) {
-          if (search && (item.text.toLowerCase().includes(search) || item.chapterTitle.toLowerCase().includes(search) || String(item.hadithnumber) === search)) results.push(item);
+          if (search && (item.text.toLowerCase().includes(search) || item.chapterTitle.toLowerCase().includes(search) || String(item.hadithnumber) === search || String(item.arabicnumber) === search)) results.push(item);
         }
       }
       const limit = Math.min(100, Math.max(1, Number(query.get("limit") ?? 40) || 40));

@@ -22,9 +22,9 @@ export default function SakeenahLineSpinner({
   label = "جارٍ التحميل",
   className = "",
 }: SakeenahLineSpinnerProps) {
-  const barHeight = Math.max(6, Math.round(size * 0.2));
-  const barWidth = Math.max(2, Math.round(size * 0.05));
-  const radius = `calc(${size}px / 2 - ${barHeight}px / 2 - 2px)`;
+  const barHeight = Math.max(4, Math.round(size * 0.16));
+  const barWidth = Math.max(1, Math.round(size * 0.045));
+  const radius = `calc(${size}px / 2 - ${barHeight}px / 2 - ${Math.max(1, Math.round(size * 0.1))}px)`;
 
   return (
     <span

@@ -44,6 +44,7 @@ import {
   HadithListResponse,
 } from "../types/hadith.types";
 import { HadithOfflineSearchService } from "../services/HadithOfflineSearchService";
+import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 
 interface HadithBooksScreenProps {
   onBack?: () => void;
@@ -87,8 +88,8 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     titleArabic: "صحيح البخاري",
     authorArabic: "الإمام محمد بن إسماعيل البخاري",
     authorDeath: "256 هـ",
-    hadithsCount: 7563,
-    chaptersCount: 97,
+    hadithsCount: 7589,
+    chaptersCount: 98,
     description: "أصح كتاب بعد كتاب الله تعالى، جمع فيه الإمام البخاري الأحاديث الصحيحة المسندة عن رسول الله ﷺ.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#2b1a10] border-[#deab65]/40",
@@ -101,8 +102,8 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     titleArabic: "صحيح مسلم",
     authorArabic: "الإمام مسلم بن الحجاج النيسابوري",
     authorDeath: "261 هـ",
-    hadithsCount: 7500,
-    chaptersCount: 56,
+    hadithsCount: 7563,
+    chaptersCount: 57,
     description: "ثاني أصح كتب الحديث الشريف، امتاز بحسن الترتيب والصياغة والاستيعاب للطرق والأسانيد.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#2b1a10] border-[#deab65]/40",
@@ -116,55 +117,55 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام أبو داود سليمان بن الأشعث السجستاني",
     authorDeath: "275 هـ",
     hadithsCount: 5274,
-    chaptersCount: 43,
+    chaptersCount: 44,
     description: "أحد أهم السنن الأربعة، ركز فيه مصنفه على أحاديث الأحكام والسنن الفقهية المرفوعة.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-abudawud",
-    coverImage: "/images/hadith/author_abudawud.webp",
+    coverImage: "/images/hadith/author_abudawud.png",
   },
   {
     id: "tirmidhi",
     titleArabic: "جامع الترمذي",
     authorArabic: "الإمام أبو عيسى محمد بن عيسى الترمذي",
     authorDeath: "279 هـ",
-    hadithsCount: 3956,
+    hadithsCount: 3998,
     chaptersCount: 50,
     description: "معروف بالجامع والسنن، تميز بذكر مذاهب الفقهاء وبيان درجات الأحاديث من الصحة والحسن والضعف.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-tirmidhi",
-    coverImage: "/images/hadith/author_tirmidhi.webp",
+    coverImage: "/images/hadith/author_tirmidhi.png",
   },
   {
     id: "nasai",
     titleArabic: "سنن النسائي (المجتبى)",
     authorArabic: "الإمام أحمد بن شعيب النسائي",
     authorDeath: "303 هـ",
-    hadithsCount: 5758,
-    chaptersCount: 51,
+    hadithsCount: 5765,
+    chaptersCount: 52,
     description: "أشد السنن انتقاءً للرجال وأقلها حديثاً ضعيفاً بعد الصحيحين، اشتمل على الدقائق الفقهية والعلل.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-nasai",
-    coverImage: "/images/hadith/author_nasai.webp",
+    coverImage: "/images/hadith/author_nasai.png",
   },
   {
     id: "ibnmajah",
     titleArabic: "سنن ابن ماجه",
     authorArabic: "الإمام أبو عبد الله محمد بن يزيد ابن ماجه",
     authorDeath: "273 هـ",
-    hadithsCount: 4341,
-    chaptersCount: 37,
+    hadithsCount: 4343,
+    chaptersCount: 38,
     description: "خاتم الكتب الستة، امتاز بحسن التبويب وكثرة زوائده على الأمهات الخمس من الأحاديث والسنن.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-ibnmajah",
-    coverImage: "/images/hadith/author_ibnmajah.webp",
+    coverImage: "/images/hadith/author_ibnmajah.png",
   },
   {
     id: "malik",
@@ -172,13 +173,13 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام مالك بن أنس الأصبحي",
     authorDeath: "179 هـ",
     hadithsCount: 1858,
-    chaptersCount: 61,
+    chaptersCount: 62,
     description: "أقدم مدونة حديثية وفقهية جامعة وصلتنا بحالة ممتازة، من أصح الآثار والسنن عن دار الهجرة.",
     category: "الموطآت والمسانيد",
     badgeColor: "bg-[#2b1a10]/12 text-[#2b1a10] border-[#2b1a10]/25",
     bgGradient: "from-[#2b1a10]/10 via-[#2b1a10]/5 to-transparent",
     editionSlug: "ara-malik",
-    coverImage: "/images/hadith/author_malik.webp",
+    coverImage: "/images/hadith/author_malik.png",
   },
   {
     id: "nawawi",
@@ -186,13 +187,13 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام يحيى بن شرف النووي",
     authorDeath: "676 هـ",
     hadithsCount: 42,
-    chaptersCount: 1,
+    chaptersCount: 2,
     description: "مجموعة جوامع كلم النبي ﷺ ومباني الإسلام والأحكام التي عليها مدار الدين.",
     category: "الأربعينيات والقدسيات",
     badgeColor: "bg-amber-950/15 text-amber-900 border-amber-800/30",
     bgGradient: "from-amber-900/10 via-amber-800/5 to-transparent",
     editionSlug: "ara-nawawi",
-    coverImage: "/images/hadith/author_nawawi.webp",
+    coverImage: "/images/hadith/author_nawawi.png",
   },
   {
     id: "qudsi",
@@ -200,13 +201,13 @@ const FALLBACK_BOOKS: HadithBookInfo[] = [
     authorArabic: "مجموعة من الأئمة الحفاظ",
     authorDeath: "متنوع",
     hadithsCount: 40,
-    chaptersCount: 1,
+    chaptersCount: 2,
     description: "الأحاديث التي يرويها النبي ﷺ عن ربه عز وجل بألفاظ جامعة معظمة ترقق القلوب.",
     category: "الأربعينيات والقدسيات",
     badgeColor: "bg-amber-950/15 text-amber-900 border-amber-800/30",
     bgGradient: "from-amber-900/10 via-amber-800/5 to-transparent",
     editionSlug: "ara-qudsi",
-    coverImage: "/images/hadith/author_qudsiyyah.webp",
+    coverImage: "/images/hadith/author_qudsiyyah.png",
   },
 ];
 
@@ -593,11 +594,14 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
             const normText = HadithOfflineSearchService.normalizeArabic(h.text);
             const normCh = HadithOfflineSearchService.normalizeArabic(h.chapterTitle);
             const hNumStr = h.hadithnumber?.toString().trim() || "";
+            const arabicNumStr = h.arabicnumber?.toString().trim() || "";
+            const exactNumber = search.trim();
 
             return (
               normText.includes(normQuery) ||
-              hNumStr === search.trim() ||
-              (!isNaN(queryNum) && hNumStr === queryNum.toString()) ||
+              hNumStr === exactNumber ||
+              arabicNumStr === exactNumber ||
+              (!isNaN(queryNum) && (hNumStr === queryNum.toString() || arabicNumStr === queryNum.toString())) ||
               normCh.includes(normQuery)
             );
           });
@@ -1165,7 +1169,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                             <div className="py-2.5 px-1 space-y-2.5">
                               <div className="flex items-center justify-between text-xs font-bold text-[#7f6a55]">
                                 <span className="text-[#2b1a10] text-[11.5px] font-extrabold flex items-center gap-1.5">
-                                  <RefreshCw className="w-3.5 h-3.5 text-[#deab65] animate-spin shrink-0" />
+                                  <SakeenahLineSpinner size={18} color="#deab65" label="جارٍ تحميل الكتاب" className="shrink-0" />
                                   جاري التحميل...
                                 </span>
                                 <span className="text-[#deab65] font-black text-[12px]">{indexingProgress}%</span>
@@ -1312,7 +1316,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
             {/* Loading & Error States */}
             {loadingBooks && (
               <div className="py-20 text-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-[#deab65] animate-spin mx-auto" />
+                <SakeenahLineSpinner size={40} color="#deab65" label="جارٍ تحميل فهرس الكتب" className="mx-auto" />
                 <p className="text-sm font-bold text-[#7f6a55]">جاري تحميل فهرس الكتب الشريفة...</p>
               </div>
             )}
@@ -1355,6 +1359,11 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                           <img
                             src={book.coverImage}
                             alt={book.titleArabic}
+                            width={1200}
+                            height={900}
+                            loading="eager"
+                            decoding="async"
+                            fetchPriority={book.id === "bukhari" || book.id === "muslim" ? "high" : "auto"}
                             referrerPolicy="no-referrer"
                             className="absolute inset-0 w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out z-0"
                           />
@@ -1417,7 +1426,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                                 />
                                 {/* Percentage & Loading Icon */}
                                 <div className="relative z-10 flex items-center justify-center gap-1 text-[10px] font-black text-[#2b1a10]">
-                                  <RefreshCw className="w-2.5 h-2.5 text-[#2b1a10] animate-spin shrink-0" />
+                                  <SakeenahLineSpinner size={18} color="#2b1a10" label="جارٍ تنزيل الكتاب" className="shrink-0" />
                                   <span className="tabular-nums font-mono">{currentPct}%</span>
                                 </div>
                               </div>
@@ -1540,7 +1549,8 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                     <form onSubmit={handleJumpToHadith} className="flex items-center gap-1.5">
                       <div className="cut-crystal-input flex items-center px-3 py-1.5">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={jumpHadithNum}
                           onChange={(e) => setJumpHadithNum(e.target.value)}
                           placeholder="رقم الحديث..."
@@ -1644,8 +1654,9 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                             )}
 
                             {loadingChapters ? (
-                              <div className="py-8 text-center text-xs font-bold text-[#7f6a55]">
-                                جاري تحميل الفهرس...
+                              <div className="py-8 flex items-center justify-center gap-2 text-xs font-bold text-[#7f6a55]">
+                                <SakeenahLineSpinner size={22} color="#deab65" label="جارٍ تحميل فهرس الأبواب" />
+                                <span>جاري تحميل الفهرس...</span>
                               </div>
                             ) : (
                               chapters
@@ -1691,7 +1702,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
             {/* Hadiths Content Loading & Error */}
             {loadingHadiths && (
               <div className="py-20 text-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-[#deab65] animate-spin mx-auto" />
+                <SakeenahLineSpinner size={40} color="#deab65" label="جارٍ تحميل الأحاديث" className="mx-auto" />
                 <p className="text-sm font-bold text-[#7f6a55]">جاري تحميل الأحاديث الشريفة...</p>
               </div>
             )}
@@ -1783,7 +1794,13 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
                           style={{ fontSize: `${fontSize}px` }}
                           className="font-serif text-[#1c120a] leading-[2.2] text-justify font-normal tracking-tight px-1"
                         >
-                          {hadith.text}
+                          {hadith.text?.trim() ? (
+                            hadith.text
+                          ) : (
+                            <span className="text-sm font-sans text-[#7f6a55] leading-loose">
+                              هذا السجل موجود في الإصدار العربي الموحّد للمصدر، لكن النص العربي غير متوفر له في ملف المصدر الحالي.
+                            </span>
+                          )}
                         </div>
 
                         {/* Hadith Action Bar */}
@@ -2040,7 +2057,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
 
             {loadingGlobalSearch ? (
               <div className="py-24 text-center space-y-4 cut-crystal-satin rounded-[26px]">
-                <RefreshCw className="w-10 h-10 text-[#deab65] animate-spin mx-auto" />
+                <SakeenahLineSpinner size={44} color="#deab65" label="جارٍ إجراء البحث" className="mx-auto" />
                 <p className="text-sm font-bold text-[#7f6a55]">جاري إجراء البحث الفائق في أمهات كتب السنة...</p>
               </div>
             ) : globalSearchResults.length === 0 ? (

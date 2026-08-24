@@ -362,16 +362,19 @@ export const HadithOfflineSearchService = {
   normalizeArabic,
 
   // Checks if a book is downloaded locally
-  async isBookDownloaded(bookId: string): Promise<boolean> {
-    const data = await hadithBooksStore.getItem(bookId);
-    return data !== null;
+  async isBookDownloaded(bookId: string, expectedCount?: number): Promise<boolean> {
+    const data = await hadithBooksStore.getItem<{ hadiths?: unknown[]; hadithsCount?: number }>(bookId);
+    if (!data || !Array.isArray(data.hadiths)) return false;
+    return expectedCount === undefined
+      ? data.hadiths.length > 0
+      : data.hadiths.length === expectedCount && data.hadithsCount === expectedCount;
   },
 
   // Returns download stats
   async getDownloadStats(books: HadithBookInfo[]): Promise<Record<string, boolean>> {
     const stats: Record<string, boolean> = {};
     for (const b of books) {
-      stats[b.id] = await this.isBookDownloaded(b.id);
+      stats[b.id] = await this.isBookDownloaded(b.id, b.hadithsCount);
     }
     return stats;
   },
@@ -384,9 +387,10 @@ export const HadithOfflineSearchService = {
     onProgress(10, `جاري الاتصال لتحميل ${book.titleArabic}...`);
 
     const urls = [
+      `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.min.json`,
       `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.json`,
+      `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.min.json`,
       `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.json`,
-      `/api/hadith/book/${book.id}` // Fallback server route
     ];
 
     let rawDataStr = "";
@@ -417,17 +421,25 @@ export const HadithOfflineSearchService = {
     const jsonParsed = JSON.parse(rawDataStr);
     const metadata = jsonParsed.metadata || {};
     const sectionMap: Record<string, string> = metadata.sections || metadata.section || {};
-    const rawHadithsList = jsonParsed.hadiths || [];
+    const rawHadithsList = Array.isArray(jsonParsed.hadiths) ? jsonParsed.hadiths : [];
+    if (rawHadithsList.length === 0) {
+      throw new Error(`ملف مصدر ${book.editionSlug} لا يحتوي على سجلات أحاديث صالحة.`);
+    }
 
-    // Map into standard HadithItems with normalization cache fields for superfast offline search
-    const hadiths: (HadithItem & { normalizedText: string; normalizedChapter: string })[] = rawHadithsList.map((h: any) => {
+    // Map into standard HadithItems with normalization cache fields for superfast offline search.
+    // Do not filter empty source text: preserving source records keeps Muslim's numbering complete.
+    const hadiths: (HadithItem & { normalizedText: string; normalizedChapter: string })[] = rawHadithsList.map((h: any, index: number) => {
       const sectionNum = h.reference?.book?.toString() || "0";
       const rawSectionTitle = sectionMap[sectionNum] || "";
-
-      // Map chapter title using the classical Arabic translation engine
       const chapterTitle = formatArabicChapterTitle(sectionNum, rawSectionTitle, book.id);
+      const rawHadithNumber = h.hadithnumber ?? h.arabicnumber;
+      const parsedHadithNumber = Number(rawHadithNumber);
+      const hadithnumber = Number.isFinite(parsedHadithNumber) ? parsedHadithNumber : index + 1;
+      const rawArabicNumber = h.arabicnumber ?? h.hadithnumber ?? hadithnumber;
+      const arabicnumber = typeof rawArabicNumber === "string" && rawArabicNumber.trim()
+        ? rawArabicNumber.trim()
+        : Number(rawArabicNumber);
 
-      // Determine grade
       let gradeStr: string | undefined = undefined;
       if (Array.isArray(h.grades) && h.grades.length > 0) {
         const topGrade = h.grades.find((g: any) =>
@@ -442,16 +454,17 @@ export const HadithOfflineSearchService = {
         gradeStr = "صحيح";
       }
 
-      const rawText = h.text || "";
+      const rawText = typeof h.text === "string" ? h.text : "";
 
       return {
         bookId: book.id,
         bookTitle: book.titleArabic,
-        hadithnumber: h.hadithnumber || h.arabicnumber,
-        arabicnumber: h.arabicnumber || h.hadithnumber,
+        hadithnumber,
+        arabicnumber,
         chapterId: sectionNum,
-        chapterTitle: chapterTitle,
+        chapterTitle,
         text: rawText,
+        textAvailable: rawText.trim().length > 0,
         grade: gradeStr,
         reference: h.reference,
         normalizedText: normalizeArabic(rawText),
@@ -517,7 +530,14 @@ export const HadithOfflineSearchService = {
 
         // 1. Direct Number Match (Max relevance if searching by Hadith number)
         const hNumStr = h.hadithnumber?.toString().trim() || "";
-        if (!isNaN(queryNum) && (hNumStr === queryNum.toString() || hNumStr === trimmedQuery || hNumStr.startsWith(queryNum.toString() + "."))) {
+        const arabicNumStr = h.arabicnumber?.toString().trim() || "";
+        if (
+          !isNaN(queryNum) &&
+          ([hNumStr, arabicNumStr].includes(queryNum.toString()) ||
+            [hNumStr, arabicNumStr].includes(trimmedQuery) ||
+            hNumStr.startsWith(queryNum.toString() + ".") ||
+            arabicNumStr.startsWith(queryNum.toString() + "."))
+        ) {
           score += 1500;
         }
 

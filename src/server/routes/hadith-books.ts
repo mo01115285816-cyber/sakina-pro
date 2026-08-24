@@ -40,8 +40,8 @@ export const HADITH_BOOKS: HadithBookInfo[] = [
     titleArabic: "صحيح مسلم",
     authorArabic: "الإمام مسلم بن الحجاج النيسابوري",
     authorDeath: "261 هـ",
-    hadithsCount: 7500,
-    chaptersCount: 56,
+    hadithsCount: 7563,
+    chaptersCount: 57,
     description: "ثاني أصح كتب الحديث الشريف، امتاز بحسن الترتيب والصياغة والاستيعاب للطرق والأسانيد.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#2b1a10] border-[#deab65]/40",
@@ -55,55 +55,55 @@ export const HADITH_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام أبو داود سليمان بن الأشعث السجستاني",
     authorDeath: "275 هـ",
     hadithsCount: 5274,
-    chaptersCount: 43,
+    chaptersCount: 44,
     description: "أحد أهم السنن الأربعة، ركز فيه مصنفه على أحاديث الأحكام والسنن الفقهية المرفوعة.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-abudawud",
-    coverImage: "/images/hadith/author_abudawud.webp",
+    coverImage: "/images/hadith/author_abudawud.png",
   },
   {
     id: "tirmidhi",
     titleArabic: "جامع الترمذي",
     authorArabic: "الإمام أبو عيسى محمد بن عيسى الترمذي",
     authorDeath: "279 هـ",
-    hadithsCount: 3956,
+    hadithsCount: 3998,
     chaptersCount: 50,
     description: "معروف بالجامع والسنن، تميز بذكر مذاهب الفقهاء وبيان درجات الأحاديث من الصحة والحسن والضعف.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-tirmidhi",
-    coverImage: "/images/hadith/author_tirmidhi.webp",
+    coverImage: "/images/hadith/author_tirmidhi.png",
   },
   {
     id: "nasai",
     titleArabic: "سنن النسائي (المجتبى)",
     authorArabic: "الإمام أحمد بن شعيب النسائي",
     authorDeath: "303 هـ",
-    hadithsCount: 5758,
-    chaptersCount: 51,
+    hadithsCount: 5765,
+    chaptersCount: 52,
     description: "أشد السنن انتقاءً للرجال وأقلها حديثاً ضعيفاً بعد الصحيحين، اشتمل على الدقائق الفقهية والعلل.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-nasai",
-    coverImage: "/images/hadith/author_nasai.webp",
+    coverImage: "/images/hadith/author_nasai.png",
   },
   {
     id: "ibnmajah",
     titleArabic: "سنن ابن ماجه",
     authorArabic: "الإمام أبو عبد الله محمد بن يزيد ابن ماجه",
     authorDeath: "273 هـ",
-    hadithsCount: 4341,
-    chaptersCount: 37,
+    hadithsCount: 4343,
+    chaptersCount: 38,
     description: "خاتم الكتب الستة، امتاز بحسن التبويب وكثرة زوائده على الأمهات الخمس من الأحاديث والسنن.",
     category: "الكتب الستة",
     badgeColor: "bg-[#deab65]/20 text-[#8a6a3d] border-[#deab65]/40",
     bgGradient: "from-[#deab65]/10 via-[#deab65]/5 to-transparent",
     editionSlug: "ara-ibnmajah",
-    coverImage: "/images/hadith/author_ibnmajah.webp",
+    coverImage: "/images/hadith/author_ibnmajah.png",
   },
   {
     id: "malik",
@@ -111,13 +111,13 @@ export const HADITH_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام مالك بن أنس الأصبحي",
     authorDeath: "179 هـ",
     hadithsCount: 1858,
-    chaptersCount: 61,
+    chaptersCount: 62,
     description: "أقدم مدونة حديثية وفقهية جامعة وصلتنا بحالة ممتازة، من أصح الآثار والسنن عن دار الهجرة.",
     category: "الموطآت والمسانيد",
     badgeColor: "bg-[#2b1a10]/12 text-[#2b1a10] border-[#2b1a10]/25",
     bgGradient: "from-[#2b1a10]/10 via-[#2b1a10]/5 to-transparent",
     editionSlug: "ara-malik",
-    coverImage: "/images/hadith/author_malik.webp",
+    coverImage: "/images/hadith/author_malik.png",
   },
   {
     id: "nawawi",
@@ -125,13 +125,13 @@ export const HADITH_BOOKS: HadithBookInfo[] = [
     authorArabic: "الإمام يحيى بن شرف النووي",
     authorDeath: "676 هـ",
     hadithsCount: 42,
-    chaptersCount: 1,
+    chaptersCount: 2,
     description: "مجموعة جوامع كلم النبي ﷺ ومباني الإسلام والأحكام التي عليها مدار الدين.",
     category: "الأربعينيات والقدسيات",
     badgeColor: "bg-amber-950/15 text-amber-900 border-amber-800/30",
     bgGradient: "from-amber-900/10 via-amber-800/5 to-transparent",
     editionSlug: "ara-nawawi",
-    coverImage: "/images/hadith/author_nawawi.webp",
+    coverImage: "/images/hadith/author_nawawi.png",
   },
   {
     id: "qudsi",
@@ -139,13 +139,13 @@ export const HADITH_BOOKS: HadithBookInfo[] = [
     authorArabic: "مجموعة من الأئمة الحفاظ",
     authorDeath: "متنوع",
     hadithsCount: 40,
-    chaptersCount: 1,
+    chaptersCount: 2,
     description: "الأحاديث التي يرويها النبي ﷺ عن ربه عز وجل بألفاظ جامعة معظمة ترقق القلوب.",
     category: "الأربعينيات والقدسيات",
     badgeColor: "bg-amber-950/15 text-amber-900 border-amber-800/30",
     bgGradient: "from-amber-900/10 via-amber-800/5 to-transparent",
     editionSlug: "ara-qudsi",
-    coverImage: "/images/hadith/author_qudsiyyah.webp",
+    coverImage: "/images/hadith/author_qudsiyyah.png",
   },
 ];
 
@@ -435,7 +435,12 @@ async function getBookDataset(bookId: string): Promise<{ metadata: any; hadiths:
   if (fs.existsSync(cacheFilePath)) {
     try {
       rawDataStr = fs.readFileSync(cacheFilePath, "utf-8");
+      const cachedJson = JSON.parse(rawDataStr);
+      if (!Array.isArray(cachedJson.hadiths) || cachedJson.hadiths.length !== book.hadithsCount) {
+        rawDataStr = "";
+      }
     } catch (e) {
+      rawDataStr = "";
       console.warn(`Error reading cache file for ${bookId}:`, e);
     }
   }
@@ -443,7 +448,9 @@ async function getBookDataset(bookId: string): Promise<{ metadata: any; hadiths:
   // 3. Download from authentic CDN API if not in disk cache
   if (!rawDataStr) {
     const urls = [
+      `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.min.json`,
       `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/${book.editionSlug}.json`,
+      `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.min.json`,
       `https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/${book.editionSlug}.json`,
     ];
 
@@ -477,15 +484,24 @@ async function getBookDataset(bookId: string): Promise<{ metadata: any; hadiths:
   const metadata = jsonParsed.metadata || {};
   const sectionMap: Record<string, string> = metadata.sections || metadata.section || {};
 
-  const rawHadithsList = jsonParsed.hadiths || [];
+  const rawHadithsList = Array.isArray(jsonParsed.hadiths) ? jsonParsed.hadiths : [];
+  if (rawHadithsList.length === 0) {
+    throw new Error(`ملف مصدر ${book.editionSlug} لا يحتوي على سجلات أحاديث صالحة.`);
+  }
 
-  // Transform into standardized HadithItem array
-  const hadiths: HadithItem[] = rawHadithsList.map((h: any) => {
+  // Transform into standardized HadithItem array without dropping source records.
+  const hadiths: HadithItem[] = rawHadithsList.map((h: any, index: number) => {
     const sectionNum = h.reference?.book?.toString() || "0";
     const rawSectionTitle = sectionMap[sectionNum] || "";
     const sectionTitle = formatArabicChapterTitle(sectionNum, rawSectionTitle, bookId);
+    const rawHadithNumber = h.hadithnumber ?? h.arabicnumber;
+    const parsedHadithNumber = Number(rawHadithNumber);
+    const hadithnumber = Number.isFinite(parsedHadithNumber) ? parsedHadithNumber : index + 1;
+    const rawArabicNumber = h.arabicnumber ?? h.hadithnumber ?? hadithnumber;
+    const arabicnumber = typeof rawArabicNumber === "string" && rawArabicNumber.trim()
+      ? rawArabicNumber.trim()
+      : Number(rawArabicNumber);
 
-    // Extract primary grade if present
     let gradeStr: string | undefined = undefined;
     if (Array.isArray(h.grades) && h.grades.length > 0) {
       const topGrade = h.grades.find((g: any) => g.grade?.includes("Sahih") || g.grade?.includes("Hasan") || g.grade?.includes("صحيح") || g.grade?.includes("حسن"));
@@ -498,18 +514,20 @@ async function getBookDataset(bookId: string): Promise<{ metadata: any; hadiths:
       gradeStr = "صحيح";
     }
 
+    const text = typeof h.text === "string" ? h.text : "";
     return {
       bookId: book.id,
       bookTitle: book.titleArabic,
-      hadithnumber: h.hadithnumber || h.arabicnumber,
-      arabicnumber: h.arabicnumber || h.hadithnumber,
+      hadithnumber,
+      arabicnumber,
       chapterId: sectionNum,
       chapterTitle: sectionTitle,
-      text: h.text || "",
+      text,
+      textAvailable: text.trim().length > 0,
       grade: gradeStr,
       reference: h.reference,
     };
-  }).filter((h: any) => h.text && h.text.trim().length > 0);
+  });
 
   const dataset = { metadata, hadiths };
   memoryCache.set(bookId, dataset);

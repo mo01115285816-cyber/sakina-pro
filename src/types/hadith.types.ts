@@ -28,6 +28,7 @@ export interface HadithItem {
   chapterId: string;
   chapterTitle: string;
   text: string;
+  textAvailable?: boolean;
   grade?: string; // e.g. "صحيح", "حسن", "ضعيف"
   reference?: {
     book?: number;
