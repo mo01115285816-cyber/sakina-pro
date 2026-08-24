@@ -45,6 +45,7 @@ import QcfVerse from "@/components/QcfVerse";
 import { prefetchQcfFont } from "@/hooks/useQcfFont";
 import { PRELOAD_QCF_PAGES } from "@/constants/appVerses";
 const QuranTabScreen = lazy(() => import("@/components/QuranTabScreen"));
+const HadithBooksScreen = lazy(() => import("@/components/HadithBooksScreen"));
 const SakeenahAIScreen = lazy(() => import("@/components/SakeenahAIScreen"));
 const AsmaAlHusnaScreen = lazy(() => import("@/components/AsmaAlHusnaScreen"));
 const SettingsScreen = lazy(() => import("@/components/SettingsScreen").then((module) => ({ default: module.SettingsScreen })));
@@ -68,7 +69,7 @@ import BatteryOptimizationModal from "@/components/BatteryOptimizationModal";
 import type { AllPrayersPreferences, PrayerSettingsId } from "@/types/prayer-settings";
 import { loadPrayerPreferences, savePrayerPreferences, prayerKeyToSettingsId } from "@/types/prayer-settings";
 
-import { BookOpenText, ChevronDown, Sparkles } from "lucide-react";
+import { BookOpenText, ChevronDown, Library, Sparkles } from "lucide-react";
 import {
   PrayerKey,
   TabType,
@@ -177,6 +178,7 @@ function AuthenticatedApp() {
 
   // Track whether to hide bottom floating navigation based on Quran sub-screens (Sheikh profile, Audio player)
   const [quranHideNav, setQuranHideNav] = useState(false);
+  const [hadithHideNav, setHadithHideNav] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   /* ── Per-Prayer Notification Preferences ── */
@@ -1510,6 +1512,18 @@ function AuthenticatedApp() {
           </Suspense>
         )}
 
+        {/* TAB: HADITH BOOKS */}
+        {activeTab === "hadith" && !showAzkarCounter && (
+          <Suspense fallback={<ScreenLoader label="جارٍ تحميل كتب الحديث..." />}>
+            <div className="block relative min-h-screen w-full overflow-x-hidden">
+              <HadithBooksScreen
+                onBack={handleBackToMain}
+                onHideNavChange={setHadithHideNav}
+              />
+            </div>
+          </Suspense>
+        )}
+
         {/* TAB: SAKEENAH AI */}
         {activeTab === "sakeenah-ai" && !showAzkarCounter && (
           <div
@@ -1585,6 +1599,7 @@ function AuthenticatedApp() {
           ═══════════════════════════════════════════════════════════════ */}
       {!showAzkarCounter &&
         !quranHideNav &&
+        !hadithHideNav &&
         !showAsmaAlHusna &&
         activeTab !== "settings" &&
         activeTab !== "sakeenah-ai" && (
@@ -1603,6 +1618,11 @@ function AuthenticatedApp() {
                   ),
                 },
                 { id: "azkar", label: "الأذكار", icon: <AdhkarIcon /> },
+                {
+                  id: "hadith",
+                  label: "كتب الحديث",
+                  icon: <Library className="h-[17px] w-[17px] text-current" strokeWidth={2} />,
+                },
                 {
                   id: "sakeenah-ai",
                   label: "سكينة AI",

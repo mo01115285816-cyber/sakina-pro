@@ -144,7 +144,53 @@
               inset 0 -1px 0 0 rgba(43, 26, 16, 0.05);
 }
 
-/* 3. UNIVERSAL CUT-CRYSTAL INPUT & SEARCH BAR */
+/* 3. DARK AND GOLD CRYSTAL CAPSULES USED BY THE HADITH LIBRARY */
+.cut-crystal-capsule-dark {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(43, 26, 16, 0.95) 0%,
+    rgba(27, 16, 10, 0.98) 100%
+  );
+  -webkit-backdrop-filter: blur(30px) saturate(220%);
+  backdrop-filter: blur(30px) saturate(220%);
+  border: 1px solid rgba(222, 171, 101, 0.35);
+  box-shadow: 0 12px 28px -8px rgba(43, 26, 16, 0.35),
+    inset 0 1px 0 0 rgba(222, 171, 101, 0.4);
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.cut-crystal-capsule-dark:hover {
+  border-color: rgba(222, 171, 101, 0.55);
+  box-shadow: 0 16px 32px -6px rgba(43, 26, 16, 0.45),
+    inset 0 1px 0 0 rgba(222, 171, 101, 0.6);
+}
+
+.cut-crystal-capsule-gold {
+  position: relative;
+  background: #deab65;
+  border: 1px solid rgba(43, 26, 16, 0.15);
+  box-shadow: 0 4px 12px rgba(222, 171, 101, 0.25),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  color: #2b1a10;
+  transition: all 0.25s ease;
+}
+
+.cut-crystal-capsule-gold:hover {
+  background: #e4b775;
+  box-shadow: 0 6px 16px rgba(222, 171, 101, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+  transform: translateY(-0.5px);
+}
+
+.cut-crystal-capsule-gold:active {
+  background: #d39f57;
+  transform: scale(0.97);
+}
+
+/* 4. UNIVERSAL CUT-CRYSTAL INPUT & SEARCH BAR */
 .cut-crystal-input {
   position: relative;
   background: rgba(253, 252, 251, 0.85);
