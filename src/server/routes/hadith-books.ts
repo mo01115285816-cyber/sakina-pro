@@ -1,10 +1,10 @@
-import { Router } from "express";
+import express from "express";
 import type { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
 import type { HadithBookInfo, HadithChapter, HadithItem } from "../../types/hadith.types";
 
-const router = Router();
+const router = express.Router();
 
 // Cache directory for downloaded Hadith datasets
 const CACHE_DIR = path.join(process.cwd(), "node_modules", ".cache", "hadith-books");
