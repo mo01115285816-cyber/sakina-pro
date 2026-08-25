@@ -136,22 +136,23 @@ export default function QuranReaderScreen({
   const [currentPage, setCurrentPage] = useState<number>(initialPage || SURAH_START_PAGES[surahId] || 1);
   const [animationDirection, setAnimationDirection] = useState<"next" | "prev">("next");
 
-  // A quiet directional reveal keeps the fixed Mushaf page stable while
-  // communicating whether the reader moved toward the previous or next page.
+  // Keep the page canvas on the compositor. A small directional translation
+  // plus opacity is deliberately used instead of clip-path, which can trigger
+  // repeated rasterization when several QCF pages are turned in succession.
   const pageVariants = {
     initial: (direction: "next" | "prev") => ({
       opacity: 0,
-      clipPath: direction === "next" ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)",
+      x: direction === "next" ? 10 : -10,
     }),
-    animate: { opacity: 1, clipPath: "inset(0 0 0 0)" },
+    animate: { opacity: 1, x: 0 },
     exit: (direction: "next" | "prev") => ({
       opacity: 0,
-      clipPath: direction === "next" ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)",
+      x: direction === "next" ? -10 : 10,
     }),
   };
 
   const pageTransition = {
-    duration: 0.2,
+    duration: 0.16,
     ease: [0.23, 1, 0.32, 1] as const,
   };
   const [pageData, setPageData] = useState<MushafQcfV2Page | null>(null);
@@ -346,12 +347,26 @@ export default function QuranReaderScreen({
     horizontal: false,
   });
   const suppressClickRef = useRef(false);
+  const navigationLockRef = useRef(false);
+  const navigationUnlockTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (navigationUnlockTimerRef.current !== null) {
+      window.clearTimeout(navigationUnlockTimerRef.current);
+    }
+  }, []);
 
   const navigateMushaf = (direction: "next" | "previous") => {
+    if (navigationLockRef.current) return;
     const targetPage = getMushafNavigationTarget(mushafPlan, direction, currentPage);
     if (targetPage === currentPage) return;
+    navigationLockRef.current = true;
     setAnimationDirection(direction === "next" ? "next" : "prev");
     setCurrentPage(targetPage);
+    navigationUnlockTimerRef.current = window.setTimeout(() => {
+      navigationLockRef.current = false;
+      navigationUnlockTimerRef.current = null;
+    }, 190);
   };
 
   const onReaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -520,7 +535,9 @@ export default function QuranReaderScreen({
         height: `${controlLayout.stage.height}px`,
       }
     : { inset: 0 };
-  const readerMotionKey = mushafPlan?.key ?? `mushaf-measuring-${currentPage}`;
+  const readerMotionKey = mushafPlan
+    ? `${mushafPlan.mode}-${mushafPlan.anchorPage}`
+    : `mushaf-measuring-${currentPage}`;
 
   return (
     <motion.div
@@ -578,10 +595,10 @@ export default function QuranReaderScreen({
             animate="animate"
             exit="exit"
             transition={pageTransition}
+            style={{ willChange: "transform, opacity", touchAction: "pan-y" }}
             ref={setViewportRef}
             data-mushaf-control-layout={controlLayout?.mode ?? 'measuring'}
             className="qcf-page-viewport relative w-full h-full overflow-visible touch-pan-y"
-            style={{ touchAction: "pan-y" }}
             onPointerDown={onReaderPointerDown}
             onPointerMove={onReaderPointerMove}
             onPointerUp={finishReaderSwipe}
