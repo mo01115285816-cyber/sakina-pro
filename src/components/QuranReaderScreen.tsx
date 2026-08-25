@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  LogOut, X, Play, Pause, BookOpen, Moon, Sun, Settings, Image as ImageIcon, ChevronRight, Copy, Check, Bookmark, Palette, AlertCircle
+  X, Play, Pause, BookOpen, Settings, Image as ImageIcon, ChevronRight, Copy, Bookmark, Palette
 } from "lucide-react";
 import { surahNames } from "@/data/surahNames";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
@@ -136,19 +136,23 @@ export default function QuranReaderScreen({
   const [currentPage, setCurrentPage] = useState<number>(initialPage || SURAH_START_PAGES[surahId] || 1);
   const [animationDirection, setAnimationDirection] = useState<"next" | "prev">("next");
 
-  // A fade preserves the existing page-change feedback without translating or
-  // scaling a fixed Mushaf page across another page or a hardware hinge.
+  // A quiet directional reveal keeps the fixed Mushaf page stable while
+  // communicating whether the reader moved toward the previous or next page.
   const pageVariants = {
-    initial: () => ({ opacity: 0 }),
-    animate: { opacity: 1 },
-    exit: () => ({ opacity: 0 }),
+    initial: (direction: "next" | "prev") => ({
+      opacity: 0,
+      clipPath: direction === "next" ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)",
+    }),
+    animate: { opacity: 1, clipPath: "inset(0 0 0 0)" },
+    exit: (direction: "next" | "prev") => ({
+      opacity: 0,
+      clipPath: direction === "next" ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)",
+    }),
   };
 
   const pageTransition = {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 38,
-    mass: 1,
+    duration: 0.2,
+    ease: [0.23, 1, 0.32, 1] as const,
   };
   const [pageData, setPageData] = useState<MushafQcfV2Page | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -334,36 +338,70 @@ export default function QuranReaderScreen({
     layoutVersion: `${showControls}:${isPlaying}:${playMode}:${showActionCard}:${showReciterModal}`,
   });
 
-  // Swipe logic
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
+  // Directional swipe logic: in the Arabic reading flow, dragging from the
+  // right edge toward the left goes to the previous page, while dragging from
+  // the left edge toward the right goes to the next page.
+  const swipeRef = useRef({
+    pointerId: null as number | null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    tracking: false,
+    horizontal: false,
+  });
+  const suppressClickRef = useRef(false);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.changedTouches[0].screenX;
-    touchEndX.current = e.changedTouches[0].screenX;
+  const navigateMushaf = (direction: "next" | "previous") => {
+    const targetPage = getMushafNavigationTarget(mushafPlan, direction, currentPage);
+    if (targetPage === currentPage) return;
+    setAnimationDirection(direction === "next" ? "next" : "prev");
+    setCurrentPage(targetPage);
   };
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.changedTouches[0].screenX;
+  const onReaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, a, input, select, textarea, [role='button']")) return;
+    swipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      tracking: true,
+      horizontal: false,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
-  const onTouchEnd = () => {
-    const diff = touchEndX.current - touchStartX.current;
-    if (diff > 80) {
-      const nextPage = getMushafNavigationTarget(mushafPlan, 'next', currentPage);
-      if (nextPage !== currentPage) {
-        setAnimationDirection("next");
-        setCurrentPage(nextPage);
-      }
-    } else if (diff < -80) {
-      const previousPage = getMushafNavigationTarget(mushafPlan, 'previous', currentPage);
-      if (previousPage !== currentPage) {
-        setAnimationDirection("prev");
-        setCurrentPage(previousPage);
-      }
+  const onReaderPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const swipe = swipeRef.current;
+    if (!swipe.tracking || swipe.pointerId !== event.pointerId) return;
+    swipe.lastX = event.clientX;
+    const deltaX = event.clientX - swipe.startX;
+    const deltaY = event.clientY - swipe.startY;
+    if (!swipe.horizontal && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+      swipe.horizontal = true;
     }
-    touchStartX.current = 0;
-    touchEndX.current = 0;
+    if (swipe.horizontal) event.preventDefault();
+  };
+
+  const finishReaderSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    const swipe = swipeRef.current;
+    if (!swipe.tracking || swipe.pointerId !== event.pointerId) return;
+    const deltaX = swipe.lastX - swipe.startX;
+    const deltaY = event.clientY - swipe.startY;
+    const wasSwipe = swipe.horizontal && Math.abs(deltaX) >= 56 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
+    swipeRef.current.tracking = false;
+    if (wasSwipe) {
+      suppressClickRef.current = true;
+      // A rightward drag begins at the left edge and advances in the Arabic flow.
+      navigateMushaf(deltaX > 0 ? "next" : "previous");
+    }
+  };
+
+  const cancelReaderSwipe = () => {
+    swipeRef.current.tracking = false;
+    swipeRef.current.horizontal = false;
   };
 
   // Verse interaction (long press -> action card)
@@ -497,10 +535,11 @@ export default function QuranReaderScreen({
       transition={{ duration: 0.4 }}
       className={`fixed inset-0 w-full h-[100vh] overflow-hidden flex flex-col justify-center px-4 sm:px-8 font-sans transition-colors duration-500 ${activeTheme.bg} ${activeTheme.text}`}
       dir="rtl"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
       onClick={() => {
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
         setShowControls(!showControls);
         setShowActionCard(false);
         setSelectedVerseForAction(null);
@@ -564,7 +603,13 @@ export default function QuranReaderScreen({
             transition={pageTransition}
             ref={setViewportRef}
             data-mushaf-control-layout={controlLayout?.mode ?? 'measuring'}
-            className="qcf-page-viewport relative w-full h-full overflow-visible"
+            className="qcf-page-viewport relative w-full h-full overflow-visible touch-pan-y"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={onReaderPointerDown}
+            onPointerMove={onReaderPointerMove}
+            onPointerUp={finishReaderSwipe}
+            onPointerCancel={cancelReaderSwipe}
+            onLostPointerCapture={cancelReaderSwipe}
           >
             <div className="mushaf-spread-measure" style={stageStyle}>
               {!isPrimaryPageReady || !mushafPlan || !controlLayout ? (
@@ -842,9 +887,10 @@ export default function QuranReaderScreen({
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="!absolute top-6 right-6 z-50 w-10 h-10 cut-crystal-capsule flex items-center justify-center text-[#2b1a10] shadow-md transition-all duration-300 hover:opacity-80"
+              className="!absolute top-6 right-6 z-50 w-9 h-9 cut-crystal-capsule flex items-center justify-center text-[#2b1a10] shadow-md transition-all duration-200 hover:opacity-80 active:scale-95"
+              aria-label="الخروج من المصحف"
             >
-              <LogOut size={20} className="rotate-180" />
+              <ChevronRight size={17} />
             </motion.button>
 
             {/* Page Bookmark Button */}
@@ -854,7 +900,7 @@ export default function QuranReaderScreen({
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3, ease: "easeOut", delay: 0.05 }}
               onClick={(e) => { e.stopPropagation(); togglePageBookmark(); }}
-              className={`!absolute top-6 left-6 z-50 w-10 h-10 cut-crystal-capsule flex items-center justify-center shadow-md transition-all duration-300 ${isBookmarked ? "text-[#b88a4f]" : "text-[#2b1a10]"} hover:opacity-80`}
+              className={`!absolute top-6 left-6 z-50 w-9 h-9 cut-crystal-capsule flex items-center justify-center shadow-md transition-all duration-200 active:scale-95 ${isBookmarked ? "text-[#b88a4f]" : "text-[#2b1a10]"} hover:opacity-80`}
               title="حفظ الصفحة الحالية"
             >
               <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
@@ -867,20 +913,20 @@ export default function QuranReaderScreen({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="!absolute bottom-8 left-1/2 -translate-x-1/2 z-50 cut-crystal-capsule flex items-center gap-2 px-3 py-2 shadow-lg !text-[#2b1a10]"
+              className="!absolute bottom-8 left-1/2 -translate-x-1/2 z-50 cut-crystal-capsule flex items-center gap-1 px-2 py-1.5 shadow-lg !text-[#2b1a10]"
               onClick={(e) => e.stopPropagation()}
               dir="ltr"
             >
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#2b1a10] transition-all duration-300 hover:text-[#b88a4f]"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[#2b1a10] transition-all duration-200 hover:text-[#b88a4f] active:scale-95"
                 title="السمات والألوان"
               >
-                <Palette size={17} />
+                <Palette size={16} />
               </button>
 
               <button
-                className="w-9 h-9 rounded-full flex items-center justify-center bg-[#b88a4f] text-[#fff9f1] shadow-md transition-all duration-300 hover:bg-[#a0753e] active:scale-95"
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-[#b88a4f] text-[#fff9f1] shadow-md transition-all duration-200 hover:bg-[#a0753e] active:scale-95"
                 onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}
               >
                 {isPlaying && playMode === 'continuous' ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
@@ -888,7 +934,7 @@ export default function QuranReaderScreen({
 
               <button
                 onClick={() => setShowReciterModal(true)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#2b1a10] transition-all duration-300 hover:text-[#b88a4f]"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[#2b1a10] transition-all duration-200 hover:text-[#b88a4f] active:scale-95"
                 title="القارئ"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
@@ -947,33 +993,34 @@ export default function QuranReaderScreen({
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="!fixed bottom-24 left-1/2 -translate-x-1/2 z-[80] w-72 cut-crystal-panel rounded-[28px] p-5 text-[#2b1a10] font-sans"
+            className="!fixed bottom-[5.25rem] left-1/2 -translate-x-1/2 z-[80] cut-crystal-capsule px-2 py-1.5 text-[#2b1a10] font-sans"
             onClick={(e) => e.stopPropagation()}
             dir="rtl"
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-sm">المظهر والألوان</h3>
-              <button onClick={() => setShowSettings(false)} className="p-1 hover:opacity-70 rounded-full">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="flex items-center gap-1.5" aria-label="اختيار مظهر المصحف">
               {Object.values(THEMES).map((t) => {
                 const isSel = themeId === t.id;
                 return (
                   <button
                     key={t.id}
                     onClick={() => setThemeId(t.id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border ${
-                      isSel ? `border-current ${activeTheme.accent} bg-black/5` : `${t.border} opacity-70`
-                    } active:scale-95 transition-all text-center`}
+                    aria-label={t.name}
+                    title={t.name}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                      isSel ? `${activeTheme.accent} bg-black/5 ring-1 ring-current` : 'opacity-60 hover:opacity-100'
+                    }`}
                   >
-                    <div className={`w-8 h-8 rounded-full ${t.bg} border ${t.border} mb-2 shadow-inner`}></div>
-                    <span className={`text-[12px] font-bold ${isSel ? activeTheme.text : ''}`}>{t.name}</span>
+                    <span className={`h-4 w-4 rounded-full border ${t.bg} ${t.border} shadow-inner`} />
                   </button>
                 );
               })}
+              <button
+                onClick={() => setShowSettings(false)}
+                aria-label="إغلاق المظهر"
+                className="ml-0.5 flex h-7 w-7 items-center justify-center rounded-full text-[#2b1a10]/60 transition-all duration-200 hover:text-[#2b1a10] active:scale-90"
+              >
+                <X size={14} />
+              </button>
             </div>
           </motion.div>
         )}
