@@ -282,10 +282,6 @@ export default function QuranReaderScreen({
   const startPage = SURAH_START_PAGES[currentSurahId] || 1;
   const endPage = currentSurahId < 114 ? (SURAH_START_PAGES[currentSurahId + 1] - 1) : 604;
   const totalPages = endPage - startPage + 1;
-  const clampedPage = Math.max(startPage, Math.min(endPage, currentPage));
-  const pagesRemaining = endPage - clampedPage;
-  const remainingPercent = totalPages > 1 ? Math.round((pagesRemaining / (totalPages - 1)) * 100) : 0;
-  const completionPercent = 100 - remainingPercent;
 
   useEffect(() => {
     try { localStorage.setItem("sakina_reader_theme", themeId); } catch {}
@@ -564,25 +560,6 @@ export default function QuranReaderScreen({
               {pageData ? `سُورَةُ ${surahNames[currentSurahId] || ''}` : ''}
           </span>
         </div>
-
-        {/* Progress Indicator Capsule */}
-        {!isLoading && pageData && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
-            <div className="cut-crystal-capsule px-4 py-1.5 flex items-center gap-3 !text-[#2b1a10]">
-              <span className="text-[10px] font-bold tracking-wide whitespace-nowrap opacity-80 font-sans">
-                المتبقي من سورة {surahNames[currentSurahId]}: {toArabicDigits(remainingPercent)}٪
-              </span>
-              <div className="w-16 h-1 rounded-full bg-current/10 overflow-hidden relative">
-                <motion.div
-                  className={`absolute right-0 top-0 bottom-0 h-full rounded-full ${activeTheme.accent.replace('text-', 'bg-')}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${completionPercent}%` }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Opening pages render their folios inside the fixed page canvas. The
             external reader number remains unchanged for every other page. */}
