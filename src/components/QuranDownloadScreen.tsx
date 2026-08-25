@@ -80,6 +80,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
         aria-label="رجوع"
         className="cut-crystal-capsule fixed left-5 right-auto top-5 z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
         style={{
+          position: "fixed",
           left: "calc(20px + env(safe-area-inset-left))",
           right: "auto",
           top: "calc(20px + env(safe-area-inset-top))",
@@ -159,7 +160,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                   </motion.span>
                 </AnimatePresence>
               </span>
-              <span className="mr-0.5 inline-flex h-6 items-center" aria-hidden="true">%</span>
+              <span className="ml-0.5 inline-flex h-6 items-center" aria-hidden="true">%</span>
             </div>
           )}
         </div>
