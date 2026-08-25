@@ -38,6 +38,7 @@ export type PureAudioReciter = {
   name: string;
   folder: string;
   description?: string;
+  photoUrl?: string;
   tracks: PureAudioTrack[];
 };
 
@@ -110,7 +111,14 @@ function normalizeCatalog(raw: unknown): PureAudioCatalog {
       .map((track) => normalizeTrack(track, folder))
       .filter((track): track is PureAudioTrack => Boolean(track))
       .sort((a, b) => a.surahId - b.surahId);
-    return [{ id, name, folder, description: typeof value.description === "string" ? value.description : undefined, tracks }];
+    return [{
+      id,
+      name,
+      folder,
+      description: typeof value.description === "string" ? value.description : undefined,
+      photoUrl: RECITER_IMAGE_PATHS[id],
+      tracks,
+    }];
   });
 
   return {
@@ -143,7 +151,9 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
       if (!response.ok) throw new Error(`catalog_${response.status}`);
       const payload = normalizeCatalog(await response.json());
       setCatalog(payload);
-      setSelectedReciterId((current) => current ?? payload.reciters[0]?.id ?? null);
+      setSelectedReciterId((current) =>
+        current && payload.reciters.some((reciter) => reciter.id === current) ? current : null,
+      );
     } catch (loadError) {
       console.error("Failed to load pure recitations catalog", loadError);
       setError("لم يتم نشر كتالوج التلاوات النقية حتى الآن.");
@@ -247,66 +257,73 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
           </section>
         ) : (
           <>
-            <section className="px-6 pb-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[16px] font-bold">اختر القارئ</h2>
-                <span className="text-[11px] text-[#7f6a55] font-bold">{catalog.reciters.length} قراء</span>
-              </div>
-              <div className="space-y-3.5">
-                {catalog.reciters.map((reciter) => {
-                  const active = selectedReciterId === reciter.id;
-                  const imageUrl = RECITER_IMAGE_PATHS[reciter.id];
-                  return (
-                    <button
-                      type="button"
-                      key={reciter.id}
-                      onClick={() => setSelectedReciterId(reciter.id)}
-                      className={`w-full rounded-[28px] p-4.5 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 shadow-md text-right ${active ? "bg-[#f5ebd6]/90 border border-[#c49a62]" : "cut-crystal-panel"}`}
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={`صورة ${reciter.name}`}
-                              width={48}
-                              height={48}
-                              loading={active ? "eager" : "lazy"}
-                              decoding="async"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-[20px] font-bold font-serif">{reciter.name.trim().charAt(0)}</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className={`text-[17px] font-bold leading-tight mb-1.5 truncate ${active ? "text-[#b88a4f]" : "text-[#2b1a10]"}`}>
-                            {reciter.name}
-                          </h3>
-                          <div className="flex items-center gap-1.5 text-[12px] text-[#7f6a55] font-bold">
-                            <BookOpenText size={12} className="text-[#b88a4f]" />
-                            <span>تلاوة نقية · {reciter.tracks.length} سورة</span>
+            {!selectedReciter ? (
+              <section className="px-6 pb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[16px] font-bold">اختر القارئ</h2>
+                  <span className="text-[11px] text-[#7f6a55] font-bold">{catalog.reciters.length} قراء</span>
+                </div>
+                <div className="space-y-3.5">
+                  {catalog.reciters.map((reciter) => {
+                    const imageUrl = RECITER_IMAGE_PATHS[reciter.id];
+                    return (
+                      <button
+                        type="button"
+                        key={reciter.id}
+                        onClick={() => setSelectedReciterId(reciter.id)}
+                        className="w-full rounded-[28px] p-4.5 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 shadow-md text-right cut-crystal-panel"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={`صورة ${reciter.name}`}
+                                width={48}
+                                height={48}
+                                loading="eager"
+                                decoding="async"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-[20px] font-bold font-serif">{reciter.name.trim().charAt(0)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-[17px] font-bold leading-tight mb-1.5 truncate text-[#2b1a10] group-hover:text-[#b88a4f]">
+                              {reciter.name}
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-[12px] text-[#7f6a55] font-bold">
+                              <BookOpenText size={12} className="text-[#b88a4f]" />
+                              <span>تلاوة نقية · {reciter.tracks.length} سورة</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <ChevronRight size={18} className="text-[#b88a4f] opacity-80 shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {selectedReciter && (
+                        <ChevronRight size={18} className="text-[#b88a4f] opacity-80 shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : (
               <section className="px-6">
-                <div className="flex items-center justify-between mb-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedReciterId(null)}
+                  className="mb-4 inline-flex items-center gap-1.5 text-[12px] font-bold text-[#7f6a55] active:scale-95 transition-transform"
+                >
+                  <ChevronRight size={16} />
+                  القراء
+                </button>
+                <div className="cut-crystal-panel rounded-[28px] p-4 mb-4 shadow-md border border-[#deab65]/20">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-14 h-14 rounded-[20px] overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
+                    <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
                       {RECITER_IMAGE_PATHS[selectedReciter.id] ? (
                         <img
                           src={RECITER_IMAGE_PATHS[selectedReciter.id]}
                           alt={`صورة ${selectedReciter.name}`}
-                          width={56}
-                          height={56}
+                          width={64}
+                          height={64}
                           loading="eager"
                           decoding="async"
                           className="w-full h-full object-cover"
@@ -315,20 +332,20 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                         <span className="text-[22px] font-bold font-serif">{selectedReciter.name.trim().charAt(0)}</span>
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="text-[18px] font-bold truncate">سور {selectedReciter.name}</h2>
-                      <p className="text-[11px] text-[#7f6a55] font-bold mt-1">اضغط على السورة للتشغيل الفوري</p>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-[18px] font-bold truncate">{selectedReciter.name}</h2>
+                      <p className="text-[11px] text-[#7f6a55] font-bold mt-1">تلاوات نقية · {selectedReciter.tracks.length} سورة</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => selectedReciter.tracks.forEach((track) => void handleDownload(track))}
+                      className="cut-crystal-capsule rounded-full px-3 py-2 text-[11px] font-bold text-[#b88a4f] inline-flex items-center gap-1.5 active:scale-95 transition-transform shrink-0"
+                      title="تنزيل السور المتاحة"
+                    >
+                      <FolderDown size={14} />
+                      الكل
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => selectedReciter.tracks.forEach((track) => void handleDownload(track))}
-                    className="cut-crystal-capsule rounded-full px-3 py-2 text-[11px] font-bold text-[#b88a4f] inline-flex items-center gap-1.5 active:scale-95 transition-transform"
-                    title="تنزيل السور المتاحة"
-                  >
-                    <FolderDown size={14} />
-                    تنزيل الكل
-                  </button>
                 </div>
                 <div className="space-y-2.5">
                   {selectedReciter.tracks.map((track, index) => {

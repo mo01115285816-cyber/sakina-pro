@@ -556,6 +556,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
         id: Math.abs(Array.from(reciter.id).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0)) || 1,
         name: reciter.name,
         letter: reciter.name.trim().charAt(0),
+        photoUrl: reciter.photoUrl,
         moshaf: [],
       };
       const pureMoshaf: Moshaf = {

@@ -10,6 +10,8 @@ export interface Reciter {
   id: number;
   name: string;
   letter: string;
+  photoUrl?: string;
+  photo?: string;
   moshaf: Moshaf[];
 }
 
