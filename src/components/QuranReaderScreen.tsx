@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  X, Play, Pause, BookOpen, Settings, Image as ImageIcon, ChevronRight, Copy, Bookmark, Palette
+  X, Play, Pause, BookOpen, Download, Settings, Image as ImageIcon, ChevronRight, Copy, Bookmark, Palette
 } from "lucide-react";
 import { surahNames } from "@/data/surahNames";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
@@ -21,6 +21,19 @@ const toArabicDigits = (num: number | string) => {
   const id = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
   return num.toString().replace(/[0-9]/g, (w) => id[+w]);
 };
+
+function cleanTafsirText(value: string): string {
+  if (typeof document === 'undefined') {
+    return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  }
+  const container = document.createElement('div');
+  container.innerHTML = value;
+  return (container.textContent || container.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+function tafsirSourceUrl(verseKey: string): string {
+  return `https://quran.com/${verseKey.replace(':', '/')}/tafsirs/ar-tafsir-ibn-kathir`;
+}
 
 interface ThemeOption {
   id: "papyrus" | "scroll" | "twilight" | "olive";
@@ -167,8 +180,17 @@ export default function QuranReaderScreen({
   const [highlightedVerseKey, setHighlightedVerseKey] = useState<string | null>(null);
 
   const [showTafsir, setShowTafsir] = useState(false);
-  const [tafsirContent, setTafsirContent] = useState<any>(null);
+  const [tafsirContent, setTafsirContent] = useState<{
+    text: string;
+    verseKey: string;
+    isOffline: boolean;
+    sourceName: string;
+    sourceUrl: string;
+  } | null>(null);
   const [tafsirLoading, setTafsirLoading] = useState(false);
+  const [tafsirDownloading, setTafsirDownloading] = useState(false);
+  const [tafsirDownloadPercent, setTafsirDownloadPercent] = useState(0);
+  const [tafsirDownloadMessage, setTafsirDownloadMessage] = useState<string | null>(null);
 
   // Audio state
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -476,26 +498,70 @@ export default function QuranReaderScreen({
   // Actions
   const handleShowTafsirForSelected = async () => {
     if (!selectedVerseForAction) return;
+    const selectedVerse = selectedVerseForAction;
     setShowActionCard(false);
     setShowTafsir(true);
+    setTafsirContent(null);
+    setTafsirDownloadMessage(null);
     setTafsirLoading(true);
     try {
-      const tafsirPage = await QuranOfflineService.getTafsirPage(selectedVerseForAction.page);
-      if (tafsirPage && tafsirPage.length > 0) {
-        const verseTafsir = tafsirPage.find((t: any) => t.verse_key === selectedVerseForAction.verse_key);
-        if (verseTafsir) {
-          setTafsirContent({ text: verseTafsir.text.replace(/<\/?[^>]+(>|$)/g, "") });
-        } else {
-          setTafsirContent({ text: "عذراً، التفسير لهذه الآية غير متوفر حالياً." });
-        }
-      } else {
-        setTafsirContent({ text: "برجاء إعادة تحميل المصحف للحصول على بيانات التفسير الموثوقة." });
+      const tafsirPage = await QuranOfflineService.getTafsirPage(selectedVerse.page);
+      const offlineEntry = tafsirPage?.find((entry) => entry.verse_key === selectedVerse.verse_key) ?? null;
+      const verseTafsir = offlineEntry ?? await QuranOfflineService.getTafsirForAyah(selectedVerse.verse_key);
+      if (!verseTafsir || verseTafsir.resource_id !== QuranOfflineService.tafsirResourceId || verseTafsir.verse_key !== selectedVerse.verse_key) {
+        throw new Error('TAFSIR_VERSE_MISMATCH');
       }
+      setTafsirContent({
+        text: cleanTafsirText(verseTafsir.text),
+        verseKey: verseTafsir.verse_key,
+        isOffline: Boolean(offlineEntry),
+        sourceName: QuranOfflineService.tafsirResourceName,
+        sourceUrl: tafsirSourceUrl(verseTafsir.verse_key),
+      });
     } catch (e) {
-      console.error(e);
-      setTafsirContent({ text: "حدث خطأ أثناء جلب التفسير." });
+      console.error('Failed to load verified tafsir', e);
+      setTafsirContent({
+        text: 'تعذر جلب التفسير الموثوق لهذه الآية. حاول مرة أخرى عند توفر الاتصال.',
+        verseKey: selectedVerse.verse_key,
+        isOffline: false,
+        sourceName: QuranOfflineService.tafsirResourceName,
+        sourceUrl: tafsirSourceUrl(selectedVerse.verse_key),
+      });
     } finally {
       setTafsirLoading(false);
+    }
+  };
+
+  const handleDownloadTafsir = async () => {
+    if (tafsirDownloading) return;
+    setTafsirDownloading(true);
+    setTafsirDownloadPercent(0);
+    setTafsirDownloadMessage(null);
+    try {
+      await QuranOfflineService.downloadTafsir((percent, message) => {
+        setTafsirDownloadPercent(percent);
+        setTafsirDownloadMessage(message);
+      });
+      setTafsirDownloadPercent(100);
+      setTafsirDownloadMessage('تم تنزيل تفسير ابن كثير كاملًا للعمل دون اتصال');
+      if (selectedVerseForAction) {
+        const cachedPage = await QuranOfflineService.getTafsirPage(selectedVerseForAction.page);
+        const cachedEntry = cachedPage?.find((entry) => entry.verse_key === selectedVerseForAction.verse_key);
+        if (cachedEntry) {
+          setTafsirContent({
+            text: cleanTafsirText(cachedEntry.text),
+            verseKey: cachedEntry.verse_key,
+            isOffline: true,
+            sourceName: QuranOfflineService.tafsirResourceName,
+            sourceUrl: tafsirSourceUrl(cachedEntry.verse_key),
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to download verified tafsir', e);
+      setTafsirDownloadMessage('تعذر تنزيل التفسير كاملًا. تحقق من الاتصال وحاول مرة أخرى.');
+    } finally {
+      setTafsirDownloading(false);
     }
   };
 
@@ -682,53 +748,56 @@ export default function QuranReaderScreen({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="!fixed z-[60] cut-crystal-capsule flex items-center gap-1.5 px-3 py-1.5 !text-[#2b1a10] shadow-2xl"
+            className="!fixed z-[60] cut-crystal-capsule flex items-center gap-1 px-2 py-1 !text-[#2b1a10] shadow-2xl"
             style={{
-              bottom: '5.5rem',
-              left: '50%',
-              transform: 'translateX(-50%)'
+              bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))',
+              left: '0.75rem',
+              right: '0.75rem',
+              width: 'fit-content',
+              maxWidth: 'calc(100vw - 1.5rem)',
+              marginInline: 'auto',
             }}
             onClick={(e) => e.stopPropagation()}
             dir="ltr"
           >
             <button
               onClick={handlePlaySelectedVerse}
-              className="p-2 rounded-full text-[#b88a4f] transition-colors hover:text-[#deab65]"
+              className="h-8 w-8 p-0 rounded-full flex items-center justify-center text-[#b88a4f] transition-colors hover:text-[#deab65] active:scale-95"
               title="تلاوة"
             >
-              <Play size={18} fill="currentColor" />
+              <Play size={16} fill="currentColor" />
             </button>
-            <div className="h-5 w-px border-l border-[#e6dccf]"></div>
+            <div className="h-4 w-px border-l border-[#e6dccf]"></div>
             <button
               onClick={handleShowTafsirForSelected}
-              className="p-2 rounded-full text-[#2b1a10] transition-colors hover:text-[#b88a4f]"
+              className="h-8 w-8 p-0 rounded-full flex items-center justify-center text-[#2b1a10] transition-colors hover:text-[#b88a4f] active:scale-95"
               title="تفسير"
             >
-              <BookOpen size={18} />
+              <BookOpen size={16} />
             </button>
-            <div className="h-5 w-px border-l border-[#e6dccf]"></div>
+            <div className="h-4 w-px border-l border-[#e6dccf]"></div>
             <button
               onClick={handleShowReflectionCard}
-              className="p-2 rounded-full text-[#2b1a10] transition-colors hover:text-[#b88a4f]"
+              className="h-8 w-8 p-0 rounded-full flex items-center justify-center text-[#2b1a10] transition-colors hover:text-[#b88a4f] active:scale-95"
               title="بطاقة تدبر"
             >
-              <ImageIcon size={18} />
+              <ImageIcon size={16} />
             </button>
-            <div className="h-5 w-px border-l border-[#e6dccf]"></div>
+            <div className="h-4 w-px border-l border-[#e6dccf]"></div>
             <button
               onClick={() => handleCopyVerse(selectedVerseForAction.text_uthmani)}
-              className="p-2 rounded-full text-[#2b1a10] transition-colors hover:text-[#b88a4f]"
+              className="h-8 w-8 p-0 rounded-full flex items-center justify-center text-[#2b1a10] transition-colors hover:text-[#b88a4f] active:scale-95"
               title="نسخ"
             >
-              <Copy size={18} />
+              <Copy size={16} />
             </button>
-            <div className="h-5 w-px border-l border-[#e6dccf]"></div>
+            <div className="h-4 w-px border-l border-[#e6dccf]"></div>
             <button
               onClick={() => toggleVerseBookmark(selectedVerseForAction)}
-              className={`p-2 rounded-full transition-colors hover:text-[#b88a4f] ${bookmarkedVerses.includes(selectedVerseForAction.verse_key) ? "text-[#b88a4f]" : "text-[#2b1a10]"}`}
+              className={`h-8 w-8 p-0 rounded-full flex items-center justify-center transition-colors hover:text-[#b88a4f] active:scale-95 ${bookmarkedVerses.includes(selectedVerseForAction.verse_key) ? "text-[#b88a4f]" : "text-[#2b1a10]"}`}
               title="حفظ العلامة المرجعية"
             >
-              <Bookmark size={18} fill={bookmarkedVerses.includes(selectedVerseForAction.verse_key) ? "currentColor" : "none"} />
+              <Bookmark size={16} fill={bookmarkedVerses.includes(selectedVerseForAction.verse_key) ? "currentColor" : "none"} />
             </button>
           </motion.div>
         )}
@@ -1022,39 +1091,84 @@ export default function QuranReaderScreen({
 
       {/* Tafsir Modal */}
       <AnimatePresence>
-          {showTafsir && (
-              <motion.div
-                  initial={{ opacity: 0, y: 100 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 100 }}
-                  className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none"
-              >
-                  <div className="w-full max-w-lg h-[60vh] sm:h-auto sm:max-h-[80vh] cut-crystal-panel rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col pointer-events-auto text-[#2b1a10] font-sans">
-                      <div className={`flex justify-between items-center p-4 border-b ${activeTheme.border}`}>
-                          <h3 className={`font-bold flex items-center gap-2 ${activeTheme.accent}`}>
-                              <BookOpen size={18} />
-                              <span>تفسير الآية</span>
-                          </h3>
-                          <button onClick={() => setShowTafsir(false)} className="p-1 hover:opacity-70 rounded-full">
-                              <X size={20} />
-                          </button>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                          {tafsirLoading ? (
-                              <div className="flex justify-center py-8">
-                                  <SakeenahLineSpinner size={32} color={activeTheme.accent} label="جارٍ تحميل التفسير" />
-                              </div>
-                          ) : (
-                              <div className="text-right" dir="rtl">
-                                  <p className="leading-loose text-sm sm:text-base font-medium opacity-90">
-                                      {tafsirContent?.text}
-                                  </p>
-                              </div>
-                          )}
-                      </div>
+        {showTafsir && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none"
+          >
+            <div className="w-full max-w-lg h-[min(68vh,560px)] sm:h-auto sm:max-h-[80vh] cut-crystal-panel rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col pointer-events-auto text-[#2b1a10] font-sans">
+              <div className={`flex justify-between items-center gap-3 px-4 py-3 border-b ${activeTheme.border}`}>
+                <div className="min-w-0 text-right" dir="rtl">
+                  <h3 className={`font-bold flex items-center gap-2 ${activeTheme.accent}`}>
+                    <BookOpen size={18} />
+                    <span>تفسير الآية</span>
+                  </h3>
+                  {tafsirContent && (
+                    <div className="mt-1 flex items-center gap-2 text-[10px] opacity-65">
+                      <span>{tafsirContent.sourceName}</span>
+                      <span aria-hidden="true">•</span>
+                      <span>{tafsirContent.isOffline ? 'متاح دون اتصال' : 'من المصدر الموثوق'}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0" dir="ltr">
+                  <button
+                    onClick={handleDownloadTafsir}
+                    disabled={tafsirDownloading}
+                    aria-label="تنزيل تفسير ابن كثير للعمل دون اتصال"
+                    title="تنزيل تفسير ابن كثير للعمل دون اتصال"
+                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${tafsirDownloading ? 'opacity-45' : 'hover:bg-black/5 active:scale-95'}`}
+                  >
+                    <Download size={17} />
+                  </button>
+                  <button
+                    onClick={() => setShowTafsir(false)}
+                    aria-label="إغلاق التفسير"
+                    className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-black/5 active:scale-95"
+                  >
+                    <X size={19} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar" dir="rtl">
+                {tafsirLoading ? (
+                  <div className="flex justify-center py-8">
+                    <SakeenahLineSpinner size={32} color={activeTheme.accent} label="جارٍ تحميل تفسير ابن كثير" />
                   </div>
-              </motion.div>
-          )}
+                ) : (
+                  <>
+                    <div className="mb-4 rounded-2xl border border-[#b88a4f]/15 bg-[#b88a4f]/5 px-3 py-2 text-right text-[11px] leading-relaxed opacity-80">
+                      تفسير ابن كثير — المصدر: Quran.com / Quran Foundation
+                      {tafsirContent?.sourceUrl && (
+                        <a
+                          href={tafsirContent.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mr-2 underline decoration-[#b88a4f]/50 underline-offset-2 hover:text-[#b88a4f]"
+                        >
+                          فتح المصدر
+                        </a>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="leading-loose text-sm sm:text-base font-medium opacity-90 whitespace-pre-wrap">
+                        {tafsirContent?.text}
+                      </p>
+                    </div>
+                    {tafsirDownloadMessage && (
+                      <div className="mt-5 rounded-2xl border border-[#b88a4f]/15 px-3 py-2 text-right text-[11px] leading-relaxed" aria-live="polite">
+                        {tafsirDownloading && <span className="ml-1 tabular-nums">{toArabicDigits(tafsirDownloadPercent)}٪</span>}
+                        {tafsirDownloadMessage}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </motion.div>
   );

@@ -119,7 +119,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
 
         {/* Text Details */}
         <div className="flex flex-col items-center text-center">
-          <h2 className="text-[26px] font-semibold text-[#2b1a10] mb-1">تنزيل المصحف</h2>
+          <h2 className="text-[26px] font-semibold text-[#2b1a10] mb-1">تنزيل المصحف والتفسير</h2>
           
           <div className="h-8">
             <AnimatePresence mode="wait">
@@ -138,7 +138,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                   initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
                   className="text-[16px] text-[#7f6a55]"
                 >
-                  يرجى البقاء في التطبيق حتى يكتمل التحميل.
+                  سيتم تنزيل المصحف وتفسير ابن كثير للعمل دون اتصال.
                 </motion.p>
               )}
             </AnimatePresence>
@@ -155,11 +155,11 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
             exit={{ opacity: 0, y: 30 }}
             className="absolute bottom-12 left-0 right-0 px-6 flex justify-center z-20"
           >
-            <button
+              <button
               onClick={startDownload}
-              className="w-full max-w-[320px] flex items-center justify-center gap-3 py-3.5 rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white font-bold text-[18px] shadow-[0_8px_24px_rgba(184,138,79,0.3)] border border-[#c49a62] transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full max-w-[320px] flex items-center justify-center gap-3 py-3.5 rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white font-bold text-[18px] shadow-[0_8px_24px_rgba(184, 138, 79, 0.3)] border border-[#c49a62] transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              <span>تنزيل المصحف</span>
+              <span>تنزيل المصحف والتفسير</span>
               <Download size={20} className="opacity-90" />
             </button>
           </motion.div>

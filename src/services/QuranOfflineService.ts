@@ -1,8 +1,25 @@
 import localforage from 'localforage';
 import { MushafLayoutService } from './MushafLayoutService';
 
-const DB_VERSION_KEY = 'quran_db_version';
-const DB_VERSION = 'v3_mushaf_layout';
+const TAFSIR_VERSION_KEY = 'quran_tafsir_version';
+const TAFSIR_VERSION = 'ibn-kathir-v1';
+const TAFSIR_API_BASE = 'https://api.quran.com/api/v4';
+const TAFSIR_RESOURCE_ID = 14;
+const TAFSIR_RESOURCE_SLUG = 'ar-tafsir-ibn-kathir';
+const TAFSIR_RESOURCE_NAME = 'تفسير ابن كثير';
+const TOTAL_PAGES = 604;
+const REQUEST_RETRIES = 4;
+
+export interface QuranTafsirEntry {
+  id?: number;
+  resource_id: number;
+  verse_key: string;
+  text: string;
+  slug?: string;
+  page_number?: number;
+  chapter_id?: number;
+  verse_number?: number;
+}
 
 const tafsirStore = localforage.createInstance({
   name: 'quran_db',
@@ -16,20 +33,83 @@ const metaStore = localforage.createInstance({
   description: 'Quran DB metadata',
 });
 
+function isTafsirEntry(value: unknown): value is QuranTafsirEntry {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Partial<QuranTafsirEntry>;
+  return (
+    entry.resource_id === TAFSIR_RESOURCE_ID &&
+    typeof entry.verse_key === 'string' &&
+    /^\d{1,3}:\d{1,3}$/.test(entry.verse_key) &&
+    typeof entry.text === 'string' &&
+    entry.text.trim().length > 0
+  );
+}
+
+function normalizeTafsirEntries(value: unknown): QuranTafsirEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isTafsirEntry);
+}
+
+function getRetryDelay(response: Response | null, attempt: number): number {
+  const retryAfter = response?.headers.get('retry-after');
+  const retryAfterSeconds = retryAfter ? Number(retryAfter) : NaN;
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
+    return Math.min(8000, retryAfterSeconds * 1000);
+  }
+  return Math.min(8000, 700 * 2 ** attempt);
+}
+
+async function fetchTafsirJson(path: string): Promise<unknown> {
+  let lastError: unknown = new Error('تعذر جلب بيانات التفسير');
+
+  for (let attempt = 0; attempt <= REQUEST_RETRIES; attempt += 1) {
+    let response: Response | null = null;
+    try {
+      response = await fetch(`${TAFSIR_API_BASE}${path}`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      if (response.ok) return await response.json();
+      lastError = new Error(`HTTP Tafsir:${response.status}`);
+      if (![408, 425, 429, 500, 502, 503, 504].includes(response.status)) break;
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < REQUEST_RETRIES) {
+      await new Promise((resolve) => setTimeout(resolve, getRetryDelay(response, attempt)));
+    }
+  }
+
+  throw lastError;
+}
+
+function extractPageEntries(payload: unknown): QuranTafsirEntry[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const tafsirs = (payload as { tafsirs?: unknown }).tafsirs;
+  return normalizeTafsirEntries(tafsirs);
+}
+
+function extractAyahEntry(payload: unknown, verseKey: string): QuranTafsirEntry | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const tafsir = (payload as { tafsir?: unknown }).tafsir;
+  return isTafsirEntry(tafsir) && tafsir.verse_key === verseKey ? tafsir : null;
+}
+
 export const QuranOfflineService = {
   tafsirStore,
   metaStore,
+  tafsirResourceId: TAFSIR_RESOURCE_ID,
+  tafsirResourceName: TAFSIR_RESOURCE_NAME,
+  tafsirResourceSlug: TAFSIR_RESOURCE_SLUG,
 
   async isDownloaded(): Promise<boolean> {
-    const version = await metaStore.getItem<string>(DB_VERSION_KEY);
-    if (version !== DB_VERSION) {
-      await QuranOfflineService.clearQuran();
-      return false;
-    }
+    const tafsirVersion = await metaStore.getItem<string>(TAFSIR_VERSION_KEY);
+    if (tafsirVersion !== TAFSIR_VERSION) return false;
     const mushafReady = await MushafLayoutService.isDownloaded();
     if (!mushafReady) return false;
     const tafsirsCount = await tafsirStore.length();
-    return tafsirsCount >= 604;
+    return tafsirsCount >= TOTAL_PAGES;
   },
 
   async getPage(pageNumber: number): Promise<any[] | null> {
@@ -38,61 +118,59 @@ export const QuranOfflineService = {
     return [page];
   },
 
-  async getTafsirPage(pageNumber: number): Promise<any[] | null> {
-    return await tafsirStore.getItem<any[]>(`tafsir_${pageNumber}`);
+  async getTafsirPage(pageNumber: number): Promise<QuranTafsirEntry[] | null> {
+    const tafsirVersion = await metaStore.getItem<string>(TAFSIR_VERSION_KEY);
+    if (tafsirVersion !== TAFSIR_VERSION) return null;
+    const cached = normalizeTafsirEntries(await tafsirStore.getItem<unknown>(`tafsir_${pageNumber}`));
+    return cached.length > 0 ? cached : null;
+  },
+
+  async getTafsirForAyah(verseKey: string): Promise<QuranTafsirEntry | null> {
+    const [surah, ayah] = verseKey.split(':').map(Number);
+    if (!Number.isInteger(surah) || !Number.isInteger(ayah) || surah < 1 || surah > 114 || ayah < 1) {
+      throw new Error('مفتاح الآية غير صالح');
+    }
+
+    const payload = await fetchTafsirJson(
+      `/tafsirs/${TAFSIR_RESOURCE_ID}/by_ayah/${encodeURIComponent(verseKey)}?fields=verse_key,resource_name,language_name,id,chapter_id,verse_number,page_number`,
+    );
+    return extractAyahEntry(payload, verseKey);
+  },
+
+  async downloadTafsir(onProgress: (percent: number, statusText: string) => void): Promise<void> {
+    let tafsirDownloaded = 0;
+    onProgress(0, 'جاري التحقق من مصدر تفسير ابن كثير...');
+
+    for (let i = 1; i <= TOTAL_PAGES; i += 10) {
+      const pageNumbers = Array.from({ length: Math.min(10, TOTAL_PAGES - i + 1) }, (_, offset) => i + offset);
+      await Promise.all(pageNumbers.map(async (pageNumber) => {
+        const payload = await fetchTafsirJson(`/tafsirs/${TAFSIR_RESOURCE_ID}/by_page/${pageNumber}`);
+        const entries = extractPageEntries(payload);
+        if (entries.length === 0) throw new Error(`بيانات تفسير الصفحة ${pageNumber} غير صالحة`);
+        if (entries.some((entry) => entry.resource_id !== TAFSIR_RESOURCE_ID)) {
+          throw new Error(`مصدر تفسير غير متوقع في الصفحة ${pageNumber}`);
+        }
+        await tafsirStore.setItem(`tafsir_${pageNumber}`, entries);
+      }));
+
+      tafsirDownloaded += pageNumbers.length;
+      const percent = Math.floor((tafsirDownloaded / TOTAL_PAGES) * 100);
+      onProgress(percent, percent === 100 ? 'اكتمل حفظ تفسير ابن كثير محليًا' : `تم حفظ تفسير ${tafsirDownloaded} صفحة...`);
+    }
+
+    await metaStore.setItem(TAFSIR_VERSION_KEY, TAFSIR_VERSION);
   },
 
   async downloadQuran(onProgress: (percent: number, statusText: string) => void): Promise<void> {
-    const totalPages = 604;
-    let pagesDownloaded = 0;
-
     onProgress(0, 'جاري تجهيز بيانات المصحف...');
 
     await MushafLayoutService.downloadAll((layoutPercent, layoutStatus) => {
-      const overallPercent = Math.floor(layoutPercent * 0.6);
-      onProgress(overallPercent, layoutStatus);
+      onProgress(Math.floor(layoutPercent * 0.6), layoutStatus);
     });
 
-    pagesDownloaded = totalPages;
-
-    const fetchTafsir = async (pageNumber: number, retries = 3): Promise<void> => {
-      try {
-        const tafsirRes = await fetch(`https://api.quran.com/api/v4/tafsirs/16/by_page/${pageNumber}`);
-        if (!tafsirRes.ok) throw new Error(`HTTP Tafsir:${tafsirRes.status}`);
-        const tafsirData = await tafsirRes.json();
-        await tafsirStore.setItem(`tafsir_${pageNumber}`, tafsirData.tafsirs);
-      } catch (err) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return fetchTafsir(pageNumber, retries - 1);
-        }
-        throw err;
-      }
-    };
-
-    const chunkSize = 10;
-    let tafsirDownloaded = 0;
-
-    for (let i = 1; i <= totalPages; i += chunkSize) {
-      const chunkPromises = [];
-      for (let j = 0; j < chunkSize && i + j <= totalPages; j++) {
-        const pageNumber = i + j;
-        chunkPromises.push(fetchTafsir(pageNumber));
-      }
-
-      await Promise.all(chunkPromises);
-      tafsirDownloaded += chunkPromises.length;
-
-      const tafsirPercent = Math.floor((tafsirDownloaded / totalPages) * 100);
-      const overallPercent = 60 + Math.floor(tafsirPercent * 0.4);
-      let statusText = `تم حفظ تفسير ${tafsirDownloaded} صفحة...`;
-      if (tafsirDownloaded < 50) statusText = 'جاري تحميل التفسير...';
-      else if (tafsirDownloaded > 550) statusText = 'جاري الحفظ النهائي محلياً...';
-
-      onProgress(overallPercent, statusText);
-    }
-
-    await metaStore.setItem(DB_VERSION_KEY, DB_VERSION);
+    await QuranOfflineService.downloadTafsir((tafsirPercent, statusText) => {
+      onProgress(60 + Math.floor(tafsirPercent * 0.4), statusText);
+    });
   },
 
   async clearQuran(): Promise<void> {
@@ -101,5 +179,5 @@ export const QuranOfflineService = {
       metaStore.clear(),
       MushafLayoutService.clearAll(),
     ]);
-  }
+  },
 };
