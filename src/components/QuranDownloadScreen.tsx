@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Download } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { QcfFontStorage } from "@/services/QcfFontStorage";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
@@ -10,6 +10,17 @@ interface Props {
   onDownloaded: () => void;
 }
 
+function getDownloadStage(progress: number, rawStatus: string): string {
+  if (progress >= 100) return "اكتمل تجهيز المصحف والتفسير";
+  if (progress >= 85) {
+    return rawStatus.includes("خط") || rawStatus.includes("تجهيز")
+      ? "جاري تجهيز المصحف للعمل دون اتصال"
+      : "جاري إنهاء تنزيل الملفات";
+  }
+  if (progress >= 60) return "جاري تنزيل تفسير ابن كثير";
+  return "جاري تنزيل المصحف";
+}
+
 export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -17,150 +28,154 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
 
   const startDownload = async () => {
     setIsDownloading(true);
+    setProgress(0);
+    setStatusText("جاري تجهيز التنزيل");
     try {
-      // Phase 1: Download Quran data (verses + tafsir) — 0% to 85%
+      // المرحلة الأولى: المصحف ثم ابن كثير — 0% إلى 85% تقريبًا
       await QuranOfflineService.downloadQuran((percent, status) => {
-        // Map 0-100 of data download to 0-85 of overall progress
-        const overallPercent = Math.floor(percent * 0.85);
-        setProgress(overallPercent);
+        setProgress(Math.floor(percent * 0.85));
         setStatusText(status);
       });
 
-      // Phase 2: Extract QCF fonts on native platforms — 85% to 100%
-      // On web, this is a no-op and returns immediately
+      // المرحلة الثانية: تجهيز خطوط QCF على الأجهزة الأصلية — 85% إلى 100%
       const isAlreadyExtracted = await QcfFontStorage.isExtracted();
       if (!isAlreadyExtracted) {
         await QcfFontStorage.extractFonts((fontPercent, fontStatus) => {
-          // Map 0-100 of font extraction to 85-100 of overall progress
-          const overallPercent = 85 + Math.floor(fontPercent * 0.15);
-          setProgress(overallPercent);
+          setProgress(85 + Math.floor(fontPercent * 0.15));
           setStatusText(fontStatus);
         });
       } else {
         setProgress(100);
-        setStatusText("اكتمل تجهيز المصحف");
+        setStatusText("اكتمل تجهيز المصحف والتفسير");
       }
 
-      // Give a tiny delay before switching
-      setTimeout(() => {
+      window.setTimeout(() => {
         onDownloaded();
       }, 500);
     } catch (err) {
-      console.error("Failed to download Quran", err);
+      console.error("Failed to download Quran and tafsir", err);
       setIsDownloading(false);
-      setStatusText("حدث خطأ أثناء التحميل. يرجى المحاولة مرة أخرى.");
+      setStatusText("تعذر إتمام التنزيل. تحقق من الاتصال وحاول مرة أخرى.");
     }
   };
 
+  const isError = !isDownloading && statusText.startsWith("تعذر");
+  const stageText = isDownloading
+    ? getDownloadStage(progress, statusText)
+    : isError
+      ? statusText
+      : "سيتم تنزيل المصحف وتفسير ابن كثير للعمل دون اتصال";
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center font-[Cairo] bg-gradient-to-b from-[#e6dccf] via-[#ece7de] to-[#fdfcfb] text-[#2b1a10]"
+      className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-hidden bg-[#ece7de] font-sans text-[#2b1a10]"
       dir="rtl"
     >
-      {/* Close Button at top left */}
-      <button 
+      <div className="pointer-events-none absolute -right-32 -top-28 h-80 w-80 rounded-full bg-[#d8b27b]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-[#b9a58e]/15 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:radial-gradient(#2b1a10_0.6px,transparent_0.6px)] [background-size:18px_18px]" />
+
+      <button
         onClick={onClose}
-        className="absolute top-6 left-6 w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm border border-[#e6dccf] text-[#7f6a55] transition-transform hover:scale-105 active:scale-95 z-10 hover:text-[#b88a4f]"
+        aria-label="رجوع"
+        className="cut-crystal-capsule absolute left-5 top-[max(1.25rem,env(safe-area-inset-top))] z-20 grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
       >
-        <X size={20} strokeWidth={2} />
+        <ArrowRight size={20} strokeWidth={1.8} className="mr-0.5" />
       </button>
 
-      <div className="flex-1 w-full flex flex-col items-center justify-center p-6 pb-20">
+      <main className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-5 pb-24 pt-20">
+        <div className="relative mb-7 flex h-[min(58vw,280px)] w-[min(58vw,280px)] max-w-[280px] items-center justify-center">
+          {isDownloading && (
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-3 z-0 rounded-full border-[3px] border-[#b88a4f]/15 border-t-[#b88a4f] border-r-[#deab65]/80"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
+            />
+          )}
 
-        {/* Central Quran calligraphy image with progress ring hugging it */}
-        <div className="relative w-[280px] h-[280px] mb-8 flex items-center justify-center">
-          {/* Progress Ring — sits behind the image, hugging its circular edge */}
           {isDownloading && (
             <svg
-              className="absolute inset-0 w-full h-full -rotate-90 z-0 overflow-visible pointer-events-none"
+              className="pointer-events-none absolute -inset-1 z-0 h-[calc(100%+0.5rem)] w-[calc(100%+0.5rem)] -rotate-90 overflow-visible"
               viewBox="0 0 280 280"
+              aria-hidden="true"
             >
-              {/* Track (subtle background ring) */}
+              <circle cx="140" cy="140" r="136" fill="none" stroke="rgba(184,138,79,0.12)" strokeWidth="4" />
               <circle
-                cx="140" cy="140" r="136"
+                cx="140"
+                cy="140"
+                r="136"
                 fill="none"
-                stroke="rgba(184, 138, 79, 0.12)"
-                strokeWidth="4"
-              />
-              {/* Active progress ring — gradient stroke for premium look */}
-              <defs>
-                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#deab65" />
-                  <stop offset="50%" stopColor="#b88a4f" />
-                  <stop offset="100%" stopColor="#8a6a3d" />
-                </linearGradient>
-              </defs>
-              <circle
-                cx="140" cy="140" r="136"
-                fill="none"
-                stroke="url(#progressGradient)"
+                stroke="#b88a4f"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeDasharray="854.51"
                 strokeDashoffset={854.51 - (854.51 * progress) / 100}
-                className="transition-all duration-500 ease-out"
-                style={{ filter: 'drop-shadow(0 2px 6px rgba(184, 138, 79, 0.3))' }}
+                className="transition-[stroke-dashoffset] duration-300 ease-out"
+                style={{ filter: "drop-shadow(0 2px 6px rgba(184,138,79,0.3))" }}
               />
             </svg>
           )}
 
-          {/* Quran calligraphy image — the circle itself (transparent background, preloaded) */}
           <img
             src={publicAssetUrl("images/quran-circle.png")}
             alt="القرآن الكريم"
-            className="relative w-[260px] h-[260px] object-contain z-10 drop-shadow-[0_12px_28px_rgba(43,26,16,0.15)]"
+            className="relative z-10 h-[calc(100%-1rem)] w-[calc(100%-1rem)] object-contain drop-shadow-[0_12px_28px_rgba(43,26,16,0.15)]"
             loading="eager"
             decoding="async"
           />
         </div>
 
-        {/* Text Details */}
-        <div className="flex flex-col items-center text-center">
-          <h2 className="text-[26px] font-semibold text-[#2b1a10] mb-1">تنزيل المصحف والتفسير</h2>
-          
-          <div className="h-8">
-            <AnimatePresence mode="wait">
-              {isDownloading ? (
-                <motion.div 
-                  key="downloading"
-                  initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                  className="flex items-center gap-1.5 text-[18px] text-[#7f6a55]"
-                >
-                  <span className="tabular-nums font-medium" dir="ltr">{progress}%</span>
-                  <span className="font-medium">مكتمل</span>
-                </motion.div>
-              ) : (
-                <motion.p
-                  key="waiting"
-                  initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
-                  className="text-[16px] text-[#7f6a55]"
-                >
-                  سيتم تنزيل المصحف وتفسير ابن كثير للعمل دون اتصال.
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
+        <section className="flex w-full max-w-[360px] flex-col items-center text-center">
+          <h2 className="font-display text-[22px] font-black leading-tight text-[#2b1a10] sm:text-[26px]">
+            تنزيل المصحف والتفسير
+          </h2>
 
-      {/* Fixed Download Button (Only shows if not downloading) */}
+          <div className="mt-3 flex min-h-[72px] w-full flex-col items-center justify-start">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={stageText}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+                className={`max-w-[320px] text-[14px] leading-7 ${isError ? "text-[#8f4d3d]" : "text-[#7f6a55]"}`}
+              >
+                {stageText}
+              </motion.p>
+            </AnimatePresence>
+            {isDownloading && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-1 tabular-nums text-[15px] font-bold text-[#b88a4f]"
+                dir="ltr"
+              >
+                {progress}%
+              </motion.span>
+            )}
+          </div>
+        </section>
+      </main>
+
       <AnimatePresence>
         {!isDownloading && (
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="absolute bottom-12 left-0 right-0 px-6 flex justify-center z-20"
+            exit={{ opacity: 0, y: 24 }}
+            className="absolute inset-x-0 z-20 flex justify-center px-5"
+            style={{ bottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
           >
-              <button
+            <button
               onClick={startDownload}
-              className="w-full max-w-[320px] flex items-center justify-center gap-3 py-3.5 rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white font-bold text-[18px] shadow-[0_8px_24px_rgba(184, 138, 79, 0.3)] border border-[#c49a62] transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex h-12 w-full max-w-[320px] items-center justify-center gap-3 rounded-full bg-[#2b1a10] px-5 text-[14px] font-black text-[#f7f2ea] shadow-[0_14px_24px_-16px_rgba(43,26,16,0.85)] transition-[transform,background-color,box-shadow] duration-200 hover:bg-[#3a2417] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ece7de] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <span>تنزيل المصحف والتفسير</span>
-              <Download size={20} className="opacity-90" />
+              <Download size={18} strokeWidth={2} />
+              <span>{isError ? "حاول مرة أخرى" : "تنزيل المصحف والتفسير"}</span>
             </button>
           </motion.div>
         )}
