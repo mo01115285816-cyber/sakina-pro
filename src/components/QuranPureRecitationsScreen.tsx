@@ -1,18 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
-import {
-  ChevronRight,
-  BookOpenText,
-  Download,
-  FolderDown,
-  Play,
-  RefreshCw,
-  Smartphone,
-  WifiOff,
-} from "lucide-react";
+import { ChevronRight, BookOpenText, RefreshCw, WifiOff } from "lucide-react";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
-import { surahNames } from "@/data/surahNames";
-import { vocalizedSurahNames } from "@/data/vocalizedSurahNames";
+import QuranSurahsScreen from "@/components/QuranSurahsScreen";
+import type { Moshaf, Reciter } from "@/types/quran";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
 
 const CATALOG_URL =
@@ -56,6 +46,10 @@ interface Props {
     track: PureAudioTrack,
     playlist: PureAudioTrack[],
   ) => void;
+  currentlyPlayingId?: number;
+  isPlaying?: boolean;
+  onTriggerTimer?: () => void;
+  onReadSurah?: (surahId: number) => void;
 }
 
 function normalizeTrack(
@@ -129,17 +123,20 @@ function normalizeCatalog(raw: unknown): PureAudioCatalog {
   };
 }
 
-function formatSize(bytes?: number) {
-  if (!bytes || bytes <= 0) return null;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} كيلوبايت`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`;
+function toStableReciterId(id: string) {
+  return Math.abs(Array.from(id).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0)) || 1;
 }
 
-export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Props) {
+export default function QuranPureRecitationsScreen({
+  onBack,
+  onPlayTrack,
+  currentlyPlayingId,
+  isPlaying = false,
+  onTriggerTimer,
+  onReadSurah,
+}: Props) {
   const [catalog, setCatalog] = useState<PureAudioCatalog | null>(null);
   const [selectedReciterId, setSelectedReciterId] = useState<string | null>(null);
-  const [downloadedUrls, setDownloadedUrls] = useState<Set<string>>(new Set());
-  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -171,36 +168,34 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
     [catalog, selectedReciterId],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    const checkDownloads = async () => {
-      if (!selectedReciter) return;
-      const { isAudioDownloaded } = await import("@/utils/audioCache");
-      const entries = await Promise.all(
-        selectedReciter.tracks.map(async (track) =>
-          (await isAudioDownloaded(track.url)) ? track.url : null,
-        ),
-      );
-      if (!cancelled) setDownloadedUrls(new Set(entries.filter((url): url is string => Boolean(url))));
-    };
-    void checkDownloads();
-    return () => {
-      cancelled = true;
+  const profileReciter = useMemo<Reciter | null>(() => {
+    if (!selectedReciter) return null;
+    return {
+      id: toStableReciterId(selectedReciter.id),
+      name: selectedReciter.name,
+      letter: selectedReciter.name.trim().charAt(0),
+      photoUrl: selectedReciter.photoUrl,
+      moshaf: [],
     };
   }, [selectedReciter]);
 
-  const handleDownload = async (track: PureAudioTrack) => {
-    if (downloadedUrls.has(track.url) || downloadingUrl) return;
-    setDownloadingUrl(track.url);
-    try {
-      const { downloadAudioFile } = await import("@/utils/audioCache");
-      await downloadAudioFile(track.url);
-      setDownloadedUrls((current) => new Set(current).add(track.url));
-    } catch (downloadError) {
-      console.error("Failed to download pure recitation", downloadError);
-    } finally {
-      setDownloadingUrl(null);
+  const profileMoshaf = useMemo<Moshaf | null>(() => {
+    if (!selectedReciter || !profileReciter) return null;
+    return {
+      id: profileReciter.id,
+      name: "تلاوة نقية",
+      server: "",
+      surah_total: selectedReciter.tracks.length,
+      surah_list: selectedReciter.tracks.map((track) => track.surahId).join(","),
+    };
+  }, [profileReciter, selectedReciter]);
+
+  const handleBack = () => {
+    if (selectedReciterId) {
+      setSelectedReciterId(null);
+      return;
     }
+    onBack();
   };
 
   return (
@@ -215,24 +210,26 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
         </div>
         <button
           type="button"
-          onClick={onBack}
-          aria-label="الخروج إلى صفحة الاستماع"
+          onClick={handleBack}
+          aria-label={selectedReciter ? "العودة إلى القراء" : "الخروج إلى صفحة الاستماع"}
           className="w-10 h-10 cut-crystal-capsule rounded-full flex items-center justify-center shadow-md text-[#2b1a10] active:scale-95 transition-transform pointer-events-auto"
         >
           <ChevronRight size={20} />
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto hide-scrollbar pt-24 pb-36 relative z-10">
-        <section className="px-6 pt-4 pb-7">
-          <div className="max-w-[340px] mr-auto text-right">
-            <p className="text-[11px] font-bold text-[#b88a4f] mb-1.5">اختيارات سكينة</p>
-            <h1 className="text-[23px] font-bold leading-tight text-[#2b1a10]">تلاوات نقية ومنتقاة</h1>
-            <p className="text-[13px] text-[#7f6a55] font-bold leading-relaxed mt-2">
-              تسجيلات مستقلة بجودة مراجَعة من مكتبة سكينة الخاصة.
-            </p>
-          </div>
-        </section>
+      <main className={selectedReciter ? "flex-1 relative z-10" : "flex-1 overflow-y-auto hide-scrollbar pt-24 pb-36 relative z-10"}>
+        {!selectedReciter && (
+          <section className="px-6 pt-4 pb-7">
+            <div className="max-w-[340px] mr-auto text-right">
+              <p className="text-[11px] font-bold text-[#b88a4f] mb-1.5">اختيارات سكينة</p>
+              <h1 className="text-[23px] font-bold leading-tight text-[#2b1a10]">تلاوات نقية ومنتقاة</h1>
+              <p className="text-[13px] text-[#7f6a55] font-bold leading-relaxed mt-2">
+                تسجيلات مستقلة بجودة مراجَعة من مكتبة سكينة الخاصة.
+              </p>
+            </div>
+          </section>
+        )}
 
         {isLoading ? (
           <div className="px-6 py-16 text-center flex flex-col items-center gap-3">
@@ -265,7 +262,7 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                 </div>
                 <div className="space-y-3.5">
                   {catalog.reciters.map((reciter) => {
-                    const imageUrl = RECITER_IMAGE_PATHS[reciter.id];
+                    const imageUrl = reciter.photoUrl;
                     return (
                       <button
                         type="button"
@@ -305,89 +302,25 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                   })}
                 </div>
               </section>
-            ) : (
-              <section className="px-6">
-                <button
-                  type="button"
-                  onClick={() => setSelectedReciterId(null)}
-                  className="mb-4 inline-flex items-center gap-1.5 text-[12px] font-bold text-[#7f6a55] active:scale-95 transition-transform"
-                >
-                  <ChevronRight size={16} />
-                  القراء
-                </button>
-                <div className="cut-crystal-panel rounded-[28px] p-4 mb-4 shadow-md border border-[#deab65]/20">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
-                      {RECITER_IMAGE_PATHS[selectedReciter.id] ? (
-                        <img
-                          src={RECITER_IMAGE_PATHS[selectedReciter.id]}
-                          alt={`صورة ${selectedReciter.name}`}
-                          width={64}
-                          height={64}
-                          loading="eager"
-                          decoding="async"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-[22px] font-bold font-serif">{selectedReciter.name.trim().charAt(0)}</span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-[18px] font-bold truncate">{selectedReciter.name}</h2>
-                      <p className="text-[11px] text-[#7f6a55] font-bold mt-1">تلاوات نقية · {selectedReciter.tracks.length} سورة</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => selectedReciter.tracks.forEach((track) => void handleDownload(track))}
-                      className="cut-crystal-capsule rounded-full px-3 py-2 text-[11px] font-bold text-[#b88a4f] inline-flex items-center gap-1.5 active:scale-95 transition-transform shrink-0"
-                      title="تنزيل السور المتاحة"
-                    >
-                      <FolderDown size={14} />
-                      الكل
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2.5">
-                  {selectedReciter.tracks.map((track, index) => {
-                    const isDownloaded = downloadedUrls.has(track.url);
-                    const isDownloading = downloadingUrl === track.url;
-                    return (
-                      <motion.div
-                        key={`${selectedReciter.id}-${track.surahId}`}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(index, 8) * 0.025, duration: 0.18 }}
-                        className="w-full min-h-[60px] rounded-full px-4 md:px-5 flex items-center gap-3 cut-crystal-panel shadow-sm"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => onPlayTrack(selectedReciter, track, selectedReciter.tracks)}
-                          className="w-10 h-10 rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform"
-                          aria-label={`تشغيل ${surahNames[track.surahId] ?? `سورة ${track.surahId}`}`}
-                        >
-                          <Play size={17} fill="currentColor" />
-                        </button>
-                        <div className="min-w-0 flex-1 text-right">
-                          <p className="text-[15px] font-bold truncate">{vocalizedSurahNames[track.surahId] ?? `سُورَةُ ${surahNames[track.surahId] ?? track.surahId}`}</p>
-                          <p className="text-[10px] text-[#7f6a55] font-bold mt-1">
-                            {track.format?.toUpperCase() ?? "صوت"}{track.bitrateKbps ? ` · ${track.bitrateKbps} كيلوبت` : ""}{formatSize(track.sizeBytes) ? ` · ${formatSize(track.sizeBytes)}` : ""}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void handleDownload(track)}
-                          disabled={isDownloading}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 ${isDownloaded ? "text-[#b88a4f] bg-[#b88a4f]/10" : "text-[#7f6a55] hover:bg-[#b88a4f]/10"}`}
-                          aria-label={isDownloaded ? "متاحة بدون إنترنت" : `تنزيل ${surahNames[track.surahId] ?? "السورة"}`}
-                        >
-                          {isDownloading ? <SakeenahLineSpinner size={32} color="#b88a4f" label="جارٍ تنزيل السورة" /> : isDownloaded ? <Smartphone size={16} /> : <Download size={16} />}
-                        </button>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+            ) : profileReciter && profileMoshaf ? (
+              <QuranSurahsScreen
+                reciter={profileReciter}
+                moshaf={profileMoshaf}
+                onBack={handleBack}
+                onPlaySurah={(surahId, allSurahs) => {
+                  const track = selectedReciter?.tracks.find((item) => item.surahId === surahId);
+                  if (selectedReciter && track) {
+                    onPlayTrack(selectedReciter, track, allSurahs.map((id) => selectedReciter.tracks.find((item) => item.surahId === id)).filter((item): item is PureAudioTrack => Boolean(item)));
+                  }
+                }}
+                currentlyPlayingId={currentlyPlayingId}
+                isPlaying={isPlaying}
+                onTriggerTimer={onTriggerTimer}
+                onReadSurah={onReadSurah}
+                resolveSurahUrl={(surahId) => selectedReciter?.tracks.find((track) => track.surahId === surahId)?.url ?? ""}
+                showHeader={false}
+              />
+            ) : null}
           </>
         )}
       </main>

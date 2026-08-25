@@ -617,6 +617,10 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
               <QuranPureRecitationsScreen
                 onBack={handleBackToReciters}
                 onPlayTrack={handlePlayPureTrack}
+                currentlyPlayingId={playingSurahId || undefined}
+                isPlaying={isPlaying}
+                onTriggerTimer={handleOpenTimerSheet}
+                onReadSurah={handleReadSurah}
               />
             </div>
 

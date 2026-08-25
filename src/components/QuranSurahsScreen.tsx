@@ -25,6 +25,8 @@ interface Props {
   isPlaying: boolean;
   onTriggerTimer?: () => void;
   onReadSurah?: (surahId: number) => void;
+  resolveSurahUrl?: (surahId: number) => string;
+  showHeader?: boolean;
 }
 
 export default function QuranSurahsScreen({
@@ -36,6 +38,8 @@ export default function QuranSurahsScreen({
   isPlaying,
   onTriggerTimer,
   onReadSurah,
+  resolveSurahUrl,
+  showHeader = true,
 }: Props) {
   const [downloadedSurahs, setDownloadedSurahs] = useState<number[]>([]);
   const [downloadingSurahs, setDownloadingSurahs] = useState<number[]>([]);
@@ -49,13 +53,16 @@ export default function QuranSurahsScreen({
       .filter((id) => !isNaN(id) && id > 0);
   }, [moshaf]);
 
+  const getSurahUrl = (surahId: number) =>
+    resolveSurahUrl?.(surahId) ?? `${moshaf.server}${surahId.toString().padStart(3, "0")}.mp3`;
+
   useEffect(() => {
     let mounted = true;
     const checkDownloads = async () => {
       const { isAudioDownloaded } = await import("@/utils/audioCache");
       const downloaded: number[] = [];
       for (const id of surahIds) {
-        const url = `${moshaf.server}${id.toString().padStart(3, "0")}.mp3`;
+        const url = getSurahUrl(id);
         const isDownloaded = await isAudioDownloaded(url);
         if (isDownloaded) {
           downloaded.push(id);
@@ -73,7 +80,7 @@ export default function QuranSurahsScreen({
 
   const handleDownloadToggle = async (surahId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${moshaf.server}${surahId.toString().padStart(3, "0")}.mp3`;
+    const url = getSurahUrl(surahId);
 
     if (downloadedSurahs.includes(surahId)) {
       setSurahToDelete(surahId);
@@ -95,7 +102,7 @@ export default function QuranSurahsScreen({
 
   const confirmDelete = async () => {
     if (surahToDelete === null) return;
-    const url = `${moshaf.server}${surahToDelete.toString().padStart(3, "0")}.mp3`;
+    const url = getSurahUrl(surahToDelete);
     try {
       const { removeAudioFile } = await import("@/utils/audioCache");
       await removeAudioFile(url);
@@ -125,7 +132,7 @@ export default function QuranSurahsScreen({
       <div className="absolute top-0 right-0 w-full h-[300px] bg-gradient-to-b from-[#b88a4f]/5 to-transparent pointer-events-none" />
 
       {/* Floating Header */}
-      <div className="fixed top-6 left-6 right-6 flex items-center justify-between z-40 pointer-events-none">
+      {showHeader && <div className="fixed top-6 left-6 right-6 flex items-center justify-between z-40 pointer-events-none">
         {/* Left bookmark icon */}
         <button className="w-10 h-10 cut-crystal-capsule rounded-full flex items-center justify-center shadow-md text-[#7f6a55] active:scale-95 transition-transform pointer-events-auto cursor-pointer">
           <Bookmark size={18} />
@@ -138,14 +145,24 @@ export default function QuranSurahsScreen({
         >
           <ChevronRight size={20} />
         </button>
-      </div>
+      </div>}
 
       <div className="flex-1 overflow-y-auto hide-scrollbar pt-24">
         {/* Reciter Info Area */}
         <div className="px-6 pb-6 flex items-center gap-4 z-10 relative">
           {/* Art thumbnail - premium gold gradient */}
-          <div className="w-[72px] h-[72px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white rounded-[24px] shrink-0 shadow-[0_8px_24px_rgba(184,138,79,0.2)] flex items-center justify-center text-[26px] font-bold font-serif border border-[#c49a62]">
-            {reciter.name.trim().charAt(0)}
+          <div className="w-[72px] h-[72px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white rounded-[24px] shrink-0 shadow-[0_8px_24px_rgba(184,138,79,0.2)] flex items-center justify-center text-[26px] font-bold font-serif border border-[#c49a62] overflow-hidden">
+            {reciter.photoUrl || reciter.photo ? (
+              <img
+                src={reciter.photoUrl || reciter.photo}
+                alt={`صورة ${reciter.name}`}
+                width={72}
+                height={72}
+                loading="eager"
+                decoding="async"
+                className="w-full h-full object-cover"
+              />
+            ) : reciter.name.trim().charAt(0)}
           </div>
           <div className="text-right flex-1">
             <h2 className="text-[22px] font-bold text-[#2b1a10] leading-tight mb-1">
