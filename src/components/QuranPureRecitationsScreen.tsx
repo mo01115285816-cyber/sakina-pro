@@ -13,9 +13,16 @@ import {
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import { surahNames } from "@/data/surahNames";
 import { vocalizedSurahNames } from "@/data/vocalizedSurahNames";
+import { publicAssetUrl } from "@/utils/publicAssetUrl";
 
 const CATALOG_URL =
   "https://mo01115285816-cyber.github.io/quran-audio/catalog/manifest.json";
+
+const RECITER_IMAGE_PATHS: Record<string, string> = {
+  "mohammed-siddiq-al-minshawi": publicAssetUrl(
+    "images/quran-recitation/mohammed-siddiq-al-minshawi.jpg",
+  ),
+};
 
 export type PureAudioTrack = {
   surahId: number;
@@ -191,7 +198,11 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
       <div className="absolute top-0 right-0 w-full h-[320px] bg-gradient-to-b from-[#b88a4f]/10 to-transparent pointer-events-none" />
       <div className="absolute bottom-[-12%] left-[-14%] w-[280px] h-[280px] bg-[#deab65]/10 rounded-full blur-[110px] pointer-events-none" />
 
-      <header className="fixed top-6 left-6 right-6 z-40 flex items-center justify-end pointer-events-none">
+      <header className="fixed top-6 left-6 right-6 z-40 flex items-center justify-between pointer-events-none">
+        <div className="cut-crystal-capsule rounded-full px-4 h-10 flex items-center gap-2 shadow-md pointer-events-auto">
+          <BookOpenText size={16} className="text-[#b88a4f]" />
+          <span className="text-[14px] font-bold">التلاوات النقية</span>
+        </div>
         <button
           type="button"
           onClick={onBack}
@@ -203,24 +214,13 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
       </header>
 
       <main className="flex-1 overflow-y-auto hide-scrollbar pt-24 pb-36 relative z-10">
-        <section className="px-6 pb-6">
-          <div className="cut-crystal-panel rounded-[30px] p-5 shadow-md border border-[#deab65]/20">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shrink-0 shadow-sm">
-                <BookOpenText size={22} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold text-[#b88a4f] mb-1">اختيارات سكينة</p>
-                <h1 className="text-[22px] font-bold leading-tight">تلاوات نقية ومنتقاة</h1>
-                <p className="text-[13px] text-[#7f6a55] font-bold leading-relaxed mt-2">
-                  تسجيلات مستقلة بجودة مراجَعة، تُدار من مكتبة سكينة الخاصة دون خلطها بالمصدر العام.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-[#2b1a10]/10 flex items-center justify-between text-[11px] text-[#7f6a55] font-bold">
-              <span>{catalog ? `إصدار الكتالوج ${catalog.version}` : "مكتبة خاصة"}</span>
-              <span>{selectedReciter ? `${selectedReciter.tracks.length} سورة متاحة` : "تُحدّث تلقائيًا"}</span>
-            </div>
+        <section className="px-6 pt-4 pb-7">
+          <div className="max-w-[340px] mr-auto text-right">
+            <p className="text-[11px] font-bold text-[#b88a4f] mb-1.5">اختيارات سكينة</p>
+            <h1 className="text-[23px] font-bold leading-tight text-[#2b1a10]">تلاوات نقية ومنتقاة</h1>
+            <p className="text-[13px] text-[#7f6a55] font-bold leading-relaxed mt-2">
+              تسجيلات مستقلة بجودة مراجَعة من مكتبة سكينة الخاصة.
+            </p>
           </div>
         </section>
 
@@ -252,21 +252,44 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                 <h2 className="text-[16px] font-bold">اختر القارئ</h2>
                 <span className="text-[11px] text-[#7f6a55] font-bold">{catalog.reciters.length} قراء</span>
               </div>
-              <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-1">
+              <div className="space-y-3.5">
                 {catalog.reciters.map((reciter) => {
                   const active = selectedReciterId === reciter.id;
+                  const imageUrl = RECITER_IMAGE_PATHS[reciter.id];
                   return (
                     <button
                       type="button"
                       key={reciter.id}
                       onClick={() => setSelectedReciterId(reciter.id)}
-                      className={`shrink-0 min-w-[150px] rounded-[22px] p-3 text-right transition-all active:scale-[0.98] ${active ? "bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white shadow-md" : "cut-crystal-panel text-[#2b1a10] shadow-sm"}`}
+                      className={`w-full rounded-[28px] p-4.5 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 shadow-md text-right ${active ? "bg-[#f5ebd6]/90 border border-[#c49a62]" : "cut-crystal-panel"}`}
                     >
-                      <div className={`w-9 h-9 rounded-[14px] flex items-center justify-center font-bold text-[16px] mb-2 ${active ? "bg-white/20" : "bg-[#b88a4f]/10 text-[#b88a4f]"}`}>
-                        {reciter.name.trim().charAt(0)}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={`صورة ${reciter.name}`}
+                              width={48}
+                              height={48}
+                              loading={active ? "eager" : "lazy"}
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[20px] font-bold font-serif">{reciter.name.trim().charAt(0)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className={`text-[17px] font-bold leading-tight mb-1.5 truncate ${active ? "text-[#b88a4f]" : "text-[#2b1a10]"}`}>
+                            {reciter.name}
+                          </h3>
+                          <div className="flex items-center gap-1.5 text-[12px] text-[#7f6a55] font-bold">
+                            <BookOpenText size={12} className="text-[#b88a4f]" />
+                            <span>تلاوة نقية · {reciter.tracks.length} سورة</span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-[13px] font-bold truncate">{reciter.name}</p>
-                      <p className={`text-[10px] font-bold mt-1 ${active ? "text-white/75" : "text-[#7f6a55]"}`}>{reciter.tracks.length} سورة</p>
+                      <ChevronRight size={18} className="text-[#b88a4f] opacity-80 shrink-0" />
                     </button>
                   );
                 })}
@@ -276,9 +299,26 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
             {selectedReciter && (
               <section className="px-6">
                 <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h2 className="text-[18px] font-bold">سور {selectedReciter.name}</h2>
-                    <p className="text-[11px] text-[#7f6a55] font-bold mt-1">اضغط على السورة للتشغيل الفوري</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-14 h-14 rounded-[20px] overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
+                      {RECITER_IMAGE_PATHS[selectedReciter.id] ? (
+                        <img
+                          src={RECITER_IMAGE_PATHS[selectedReciter.id]}
+                          alt={`صورة ${selectedReciter.name}`}
+                          width={56}
+                          height={56}
+                          loading="eager"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[22px] font-bold font-serif">{selectedReciter.name.trim().charAt(0)}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-[18px] font-bold truncate">سور {selectedReciter.name}</h2>
+                      <p className="text-[11px] text-[#7f6a55] font-bold mt-1">اضغط على السورة للتشغيل الفوري</p>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -300,7 +340,7 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: Math.min(index, 8) * 0.025, duration: 0.18 }}
-                        className="cut-crystal-panel rounded-[22px] px-4 py-3 flex items-center gap-3 shadow-sm"
+                        className="w-full min-h-[60px] rounded-full px-4 md:px-5 flex items-center gap-3 cut-crystal-panel shadow-sm"
                       >
                         <button
                           type="button"
