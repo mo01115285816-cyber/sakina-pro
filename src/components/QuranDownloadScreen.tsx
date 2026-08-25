@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Download } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { QcfFontStorage } from "@/services/QcfFontStorage";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
@@ -17,7 +18,7 @@ function getDownloadStage(progress: number, rawStatus: string): string {
       ? "جاري تجهيز المصحف للعمل دون اتصال"
       : "جاري إنهاء تنزيل الملفات";
   }
-  if (progress >= 60) return "جاري تنزيل تفسير ابن كثير";
+  if (rawStatus.includes("تفسير")) return "جاري تنزيل تفسير ابن كثير";
   return "جاري تنزيل المصحف";
 }
 
@@ -66,7 +67,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       ? statusText
       : "سيتم تنزيل المصحف وتفسير ابن كثير للعمل دون اتصال";
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -74,16 +75,12 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col items-center overflow-hidden bg-[#ece7de] font-sans text-[#2b1a10]"
       dir="rtl"
     >
-      <div className="pointer-events-none absolute -right-32 -top-28 h-80 w-80 rounded-full bg-[#d8b27b]/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-[#b9a58e]/15 blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.025] [background-image:radial-gradient(#2b1a10_0.6px,transparent_0.6px)] [background-size:18px_18px]" />
-
       <button
         onClick={onClose}
         aria-label="رجوع"
-        className="cut-crystal-capsule absolute left-5 top-[max(1.25rem,env(safe-area-inset-top))] z-20 grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
+        className="cut-crystal-capsule absolute right-5 top-[max(1.25rem,env(safe-area-inset-top))] z-20 grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
       >
-        <ArrowRight size={20} strokeWidth={1.8} className="mr-0.5" />
+        <ChevronRight size={20} strokeWidth={1.8} />
       </button>
 
       <main className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-5 pb-24 pt-20">
@@ -125,7 +122,8 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
             alt="القرآن الكريم"
             className="relative z-10 h-[calc(100%-1rem)] w-[calc(100%-1rem)] object-contain drop-shadow-[0_12px_28px_rgba(43,26,16,0.15)]"
             loading="eager"
-            decoding="async"
+            decoding="sync"
+            fetchPriority="high"
           />
         </div>
 
@@ -172,7 +170,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
           >
             <button
               onClick={startDownload}
-              className="flex h-12 w-full max-w-[320px] items-center justify-center gap-3 rounded-full bg-[#2b1a10] px-5 text-[14px] font-black text-[#f7f2ea] shadow-[0_14px_24px_-16px_rgba(43,26,16,0.85)] transition-[transform,background-color,box-shadow] duration-200 hover:bg-[#3a2417] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ece7de] disabled:cursor-not-allowed disabled:opacity-60"
+              className="cut-crystal-capsule-gold flex h-12 w-full max-w-[320px] items-center justify-center gap-3 px-5 text-[14px] font-black shadow-[0_14px_24px_-16px_rgba(184,138,79,0.55)] transition-[transform,box-shadow] duration-200 hover:shadow-[0_16px_28px_-14px_rgba(184,138,79,0.62)] active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ece7de] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download size={18} strokeWidth={2} />
               <span>{isError ? "حاول مرة أخرى" : "تنزيل المصحف والتفسير"}</span>
@@ -180,6 +178,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
