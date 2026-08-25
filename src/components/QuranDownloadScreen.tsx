@@ -78,7 +78,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       <button
         onClick={onClose}
         aria-label="رجوع"
-        className="cut-crystal-capsule absolute right-5 top-[max(1.25rem,env(safe-area-inset-top))] z-20 grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
+        className="cut-crystal-capsule fixed right-5 top-[max(1.25rem,env(safe-area-inset-top))] z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
       >
         <ChevronRight size={20} strokeWidth={1.8} />
       </button>
@@ -86,35 +86,25 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       <main className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-5 pb-24 pt-20">
         <div className="relative mb-7 flex h-[min(58vw,280px)] w-[min(58vw,280px)] max-w-[280px] items-center justify-center">
           {isDownloading && (
-            <motion.div
+            <motion.svg
               aria-hidden="true"
-              className="pointer-events-none absolute -inset-3 z-0 rounded-full border-[3px] border-[#b88a4f]/15 border-t-[#b88a4f] border-r-[#deab65]/80"
+              className="pointer-events-none absolute inset-2 z-0 h-[calc(100%-1rem)] w-[calc(100%-1rem)] overflow-visible"
+              viewBox="0 0 264 264"
               animate={{ rotate: 360 }}
               transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
-            />
-          )}
-
-          {isDownloading && (
-            <svg
-              className="pointer-events-none absolute -inset-1 z-0 h-[calc(100%+0.5rem)] w-[calc(100%+0.5rem)] -rotate-90 overflow-visible"
-              viewBox="0 0 280 280"
-              aria-hidden="true"
             >
-              <circle cx="140" cy="140" r="136" fill="none" stroke="rgba(184,138,79,0.12)" strokeWidth="4" />
               <circle
-                cx="140"
-                cy="140"
-                r="136"
+                cx="132"
+                cy="132"
+                r="129"
                 fill="none"
                 stroke="#b88a4f"
-                strokeWidth="5"
+                strokeWidth="4"
                 strokeLinecap="round"
-                strokeDasharray="854.51"
-                strokeDashoffset={854.51 - (854.51 * progress) / 100}
-                className="transition-[stroke-dashoffset] duration-300 ease-out"
-                style={{ filter: "drop-shadow(0 2px 6px rgba(184,138,79,0.3))" }}
+                strokeDasharray="92 719"
+                style={{ filter: "drop-shadow(0 2px 5px rgba(184,138,79,0.28))" }}
               />
-            </svg>
+            </motion.svg>
           )}
 
           <img
@@ -132,7 +122,8 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
             تنزيل المصحف والتفسير
           </h2>
 
-          <div className="mt-3 flex min-h-[72px] w-full flex-col items-center justify-start">
+          <div className="mt-3 flex min-h-[76px] w-full flex-col items-center justify-start">
+          <div className="relative h-9 w-full max-w-[320px]">
             <AnimatePresence mode="wait" initial={false}>
               <motion.p
                 key={stageText}
@@ -140,22 +131,23 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.6, ease: "easeInOut" }}
-                className={`max-w-[320px] text-[14px] leading-7 ${isError ? "text-[#8f4d3d]" : "text-[#7f6a55]"}`}
+                className={`absolute inset-x-0 top-0 flex h-9 items-center justify-center text-[14px] leading-7 ${isError ? "text-[#8f4d3d]" : "text-[#7f6a55]"}`}
               >
                 {stageText}
               </motion.p>
             </AnimatePresence>
-            {isDownloading && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-1 tabular-nums text-[15px] font-bold text-[#b88a4f]"
-                dir="ltr"
-              >
-                {progress}%
-              </motion.span>
-            )}
           </div>
+          {isDownloading && (
+            <motion.span
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-1 h-6 tabular-nums text-[15px] font-bold text-[#b88a4f]"
+              dir="ltr"
+            >
+              {progress}%
+            </motion.span>
+          )}
+        </div>
         </section>
       </main>
 
