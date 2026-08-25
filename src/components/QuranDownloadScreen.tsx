@@ -78,7 +78,11 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       <button
         onClick={onClose}
         aria-label="رجوع"
-        className="cut-crystal-capsule fixed right-5 top-[max(1.25rem,env(safe-area-inset-top))] z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
+        className="cut-crystal-capsule fixed top-0 z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
+        style={{
+          left: "max(1.25rem, env(safe-area-inset-left))",
+          top: "max(1.25rem, env(safe-area-inset-top))",
+        }}
       >
         <ChevronRight size={20} strokeWidth={1.8} />
       </button>
@@ -86,25 +90,26 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       <main className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-5 pb-24 pt-20">
         <div className="relative mb-7 flex h-[min(58vw,280px)] w-[min(58vw,280px)] max-w-[280px] items-center justify-center">
           {isDownloading && (
-            <motion.svg
+            <svg
               aria-hidden="true"
-              className="pointer-events-none absolute inset-2 z-0 h-[calc(100%-1rem)] w-[calc(100%-1rem)] overflow-visible"
+              className="pointer-events-none absolute inset-2 z-0 h-[calc(100%-1rem)] w-[calc(100%-1rem)] -rotate-90 overflow-visible"
               viewBox="0 0 264 264"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
             >
-              <circle
+              <motion.circle
                 cx="132"
                 cy="132"
                 r="129"
+                pathLength={1}
                 fill="none"
                 stroke="#b88a4f"
                 strokeWidth="4"
                 strokeLinecap="round"
-                strokeDasharray="92 719"
+                strokeDasharray="1"
+                animate={{ strokeDashoffset: 1 - progress / 100 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
                 style={{ filter: "drop-shadow(0 2px 5px rgba(184,138,79,0.28))" }}
               />
-            </motion.svg>
+            </svg>
           )}
 
           <img
@@ -138,14 +143,21 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
             </AnimatePresence>
           </div>
           {isDownloading && (
-            <motion.span
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-1 h-6 tabular-nums text-[15px] font-bold text-[#b88a4f]"
-              dir="ltr"
-            >
-              {progress}%
-            </motion.span>
+            <div className="relative mt-1 h-6 w-16" aria-live="polite" aria-atomic="true">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={progress}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.6, ease: "easeInOut" }}
+                  className="absolute inset-0 flex items-center justify-center tabular-nums text-[15px] font-bold text-[#b88a4f]"
+                  dir="ltr"
+                >
+                  {progress}%
+                </motion.span>
+              </AnimatePresence>
+            </div>
           )}
         </div>
         </section>
