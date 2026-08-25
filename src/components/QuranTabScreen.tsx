@@ -75,12 +75,15 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
     setReadingInitialPage(page);
   }, []);
 
-  // Synchronize bottom navigation visibility
+  // Keep the app navigation hidden inside focused Quran subpages and the player.
   useEffect(() => {
-    if (onHideNavChange) {
-      onHideNavChange(isPlayerOpen || readingSurahId !== null);
-    }
-  }, [isPlayerOpen, readingSurahId, onHideNavChange]);
+    onHideNavChange?.(
+      isPlayerOpen ||
+        readingSurahId !== null ||
+        currentScreen === "surahs" ||
+        currentScreen === "pureRecitations",
+    );
+  }, [currentScreen, isPlayerOpen, readingSurahId, onHideNavChange]);
 
   // Audio HTML Element Ref
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -135,14 +138,6 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
       document.body.style.overflow = "";
     };
   }, [isPlayerOpen]);
-
-  // Notify parent of navigation and player state changes to show/hide the floating bottom navigation bar
-  useEffect(() => {
-    if (onHideNavChange) {
-      const shouldHide = currentScreen === "surahs";
-      onHideNavChange(shouldHide);
-    }
-  }, [currentScreen, onHideNavChange]);
 
   // Keep track of any blob URL to revoke later
   const currentBlobUrl = useRef<string | null>(null);

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import {
   ChevronRight,
+  BookOpenText,
   Download,
   FolderDown,
-  Music2,
+  Play,
   RefreshCw,
   Smartphone,
   WifiOff,
@@ -200,7 +201,7 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
           <ChevronRight size={20} />
         </button>
         <div className="cut-crystal-capsule rounded-full px-4 h-10 flex items-center gap-2 shadow-md pointer-events-auto">
-          <Music2 size={16} className="text-[#b88a4f]" />
+          <BookOpenText size={16} className="text-[#b88a4f]" />
           <span className="text-[14px] font-bold">التلاوات النقية</span>
         </div>
       </header>
@@ -210,7 +211,7 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
           <div className="cut-crystal-panel rounded-[30px] p-5 shadow-md border border-[#deab65]/20">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shrink-0 shadow-sm">
-                <Music2 size={22} />
+                <BookOpenText size={22} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-[#b88a4f] mb-1">اختيارات سكينة</p>
@@ -311,7 +312,7 @@ export default function QuranPureRecitationsScreen({ onBack, onPlayTrack }: Prop
                           className="w-10 h-10 rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform"
                           aria-label={`تشغيل ${surahNames[track.surahId] ?? `سورة ${track.surahId}`}`}
                         >
-                          <Music2 size={17} />
+                          <Play size={17} fill="currentColor" />
                         </button>
                         <div className="min-w-0 flex-1 text-right">
                           <p className="text-[15px] font-bold truncate">{vocalizedSurahNames[track.surahId] ?? `سُورَةُ ${surahNames[track.surahId] ?? track.surahId}`}</p>
