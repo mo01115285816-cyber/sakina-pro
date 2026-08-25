@@ -13,6 +13,10 @@ import QuranAudioPlayerScreen from "./QuranAudioPlayerScreen";
 import QuranReaderScreen from "./QuranReaderScreen";
 import QuranReadingGatewayScreen from "./QuranReadingGatewayScreen";
 import QuranDownloadScreen from "./QuranDownloadScreen";
+import QuranPureRecitationsScreen, {
+  type PureAudioReciter,
+  type PureAudioTrack,
+} from "./QuranPureRecitationsScreen";
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { RadioMediaService } from "@/services/RadioMediaService";
 import { QuranMediaService } from "@/services/QuranMediaService";
@@ -28,8 +32,8 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
   // Master Mode: "listening" (audio, broadcast, reciters) or "reading" (gate layout)
   const [quranMode, setQuranMode] = useState<"listening" | "reading">("listening");
 
-  // Navigation stack: "reciters" | "surahs" | "player"
-  const [currentScreen, setCurrentScreen] = useState<"reciters" | "surahs">("reciters");
+  // Navigation stack: regular reciters, pure recitations, or surahs
+  const [currentScreen, setCurrentScreen] = useState<"reciters" | "pureRecitations" | "surahs">("reciters");
   
   // Selection states
   const [selectedReciter, setSelectedReciter] = useState<Reciter | null>(null);
@@ -142,6 +146,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
 
   // Keep track of any blob URL to revoke later
   const currentBlobUrl = useRef<string | null>(null);
+  const pureTrackUrlsRef = useRef<Record<number, string>>({});
   const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const playPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -219,10 +224,21 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
     }
   }, [stopRadioCapture]);
 
-  // Play a specific surah
-  const playSurah = useCallback((surahId: number, allSurahs: number[]) => {
-    const { selectedReciter: reciter, selectedMoshaf: moshaf, playbackRate: currentRate } = stateRef.current;
-    if (!reciter || !moshaf) return;
+  // Play a specific surah, optionally using a newly selected pure-recitation source.
+  const playSurah = useCallback(
+    (
+      surahId: number,
+      allSurahs: number[],
+      sourceOverride?: { reciter: Reciter; moshaf: Moshaf },
+    ) => {
+      const {
+        selectedReciter: activeReciter,
+        selectedMoshaf: activeMoshaf,
+        playbackRate: currentRate,
+      } = stateRef.current;
+      const reciter = sourceOverride?.reciter ?? activeReciter;
+      const moshaf = sourceOverride?.moshaf ?? activeMoshaf;
+      if (!reciter || !moshaf) return;
 
     if (playTimeoutRef.current) {
       clearTimeout(playTimeoutRef.current);
@@ -238,7 +254,9 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
     setIsPlayerOpen(true);
     setIsPlaying(true);
 
-    const audioUrl = `${moshaf.server}${surahId.toString().padStart(3, "0")}.mp3`;
+    const audioUrl =
+      pureTrackUrlsRef.current[surahId] ??
+      `${moshaf.server}${surahId.toString().padStart(3, "0")}.mp3`;
 
     // Defer audio loading slightly to guarantee a 60fps immediate screen transition
     playTimeoutRef.current = setTimeout(async () => {
@@ -263,7 +281,9 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
         }
       }
     }, 10);
-  }, [safePlay, stopRadioCapture]);
+    },
+    [safePlay, stopRadioCapture],
+  );
 
   // Play/Pause Live Radio
   const playRadio = useCallback(async (radio: RadioStation) => {
@@ -517,6 +537,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
   };
 
   const handleSelectReciter = (reciter: Reciter, moshaf: Moshaf) => {
+    pureTrackUrlsRef.current = {};
     setSelectedReciter(reciter);
     setSelectedMoshaf(moshaf);
     setCurrentScreen("surahs");
@@ -525,6 +546,39 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
   const handleBackToReciters = () => {
     setCurrentScreen("reciters");
   };
+
+  const handleOpenPureRecitations = () => {
+    setCurrentScreen("pureRecitations");
+  };
+
+  const handlePlayPureTrack = useCallback(
+    (reciter: PureAudioReciter, track: PureAudioTrack, playlistTracks: PureAudioTrack[]) => {
+      pureTrackUrlsRef.current = Object.fromEntries(
+        playlistTracks.map((playlistTrack) => [playlistTrack.surahId, playlistTrack.url]),
+      );
+      const playableIds = playlistTracks.map((playlistTrack) => playlistTrack.surahId);
+      const pureReciter: Reciter = {
+        id: Math.abs(Array.from(reciter.id).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0)) || 1,
+        name: reciter.name,
+        letter: reciter.name.trim().charAt(0),
+        moshaf: [],
+      };
+      const pureMoshaf: Moshaf = {
+        id: pureReciter.id,
+        name: "تلاوة نقية",
+        server: "",
+        surah_total: playableIds.length,
+        surah_list: playableIds.join(","),
+      };
+      setSelectedReciter(pureReciter);
+      setSelectedMoshaf(pureMoshaf);
+      playSurah(track.surahId, playableIds, {
+        reciter: pureReciter,
+        moshaf: pureMoshaf,
+      });
+    },
+    [playSurah],
+  );
 
   const handleClosePlayer = () => {
     setIsPlayerOpen(false);
@@ -559,6 +613,14 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
                 onPlayRadio={playRadio}
                 onPauseRadio={pauseRadio}
                 onModeChange={setQuranMode}
+                onOpenPureRecitations={handleOpenPureRecitations}
+              />
+            </div>
+
+            <div className={currentScreen === "pureRecitations" ? "block w-full" : "hidden"}>
+              <QuranPureRecitationsScreen
+                onBack={handleBackToReciters}
+                onPlayTrack={handlePlayPureTrack}
               />
             </div>
 

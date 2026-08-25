@@ -11,6 +11,7 @@ import {
   BookOpen,
   ChevronsUpDown,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
@@ -223,6 +224,7 @@ interface Props {
   onToggleRadioCapture: () => void;
   radioCaptureNotice: string | null;
   onModeChange?: (mode: "listening" | "reading") => void;
+  onOpenPureRecitations: () => void;
 }
 
 export default function QuranRecitersScreen({
@@ -242,6 +244,7 @@ export default function QuranRecitersScreen({
   onToggleRadioCapture,
   radioCaptureNotice,
   onModeChange,
+  onOpenPureRecitations,
 }: Props) {
   const [reciters, setReciters] = useState<Reciter[]>(FALLBACK_RECITERS);
   const [isLoading, setIsLoading] = useState(true);
@@ -507,6 +510,26 @@ export default function QuranRecitersScreen({
           onToggleRadioCapture={onToggleRadioCapture}
           radioCaptureNotice={radioCaptureNotice}
         />
+
+        {/* Dedicated entry point for the separate pure recitations screen. */}
+        <button
+          type="button"
+          onClick={onOpenPureRecitations}
+          className="w-full mb-4 cut-crystal-panel rounded-[28px] p-4.5 text-right shadow-md border border-[#deab65]/20 transition-all active:scale-[0.99] hover:bg-[#f5ebd6]/45"
+          aria-label="فتح صفحة التلاوات النقية"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[17px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Sparkles size={19} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-[#b88a4f] mb-1">اختيارات سكينة</p>
+              <h2 className="text-[16px] font-bold text-[#2b1a10] leading-tight">التلاوات النقية</h2>
+              <p className="text-[11px] text-[#7f6a55] font-bold mt-1 truncate">تسجيلات منتقاة بجودة أفضل من مكتبة سكينة الخاصة</p>
+            </div>
+            <ChevronLeft size={18} className="text-[#b88a4f] shrink-0" />
+          </div>
+        </button>
 
         {isLoading && reciters.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3">
