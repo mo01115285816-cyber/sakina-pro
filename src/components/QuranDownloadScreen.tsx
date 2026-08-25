@@ -78,10 +78,11 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
       <button
         onClick={onClose}
         aria-label="رجوع"
-        className="cut-crystal-capsule fixed top-0 z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
+        className="cut-crystal-capsule fixed left-5 right-auto top-5 z-[60] grid h-10 w-10 place-items-center text-[#2b1a10] shadow-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88a4f]/45"
         style={{
-          left: "max(1.25rem, env(safe-area-inset-left))",
-          top: "max(1.25rem, env(safe-area-inset-top))",
+          left: "calc(20px + env(safe-area-inset-left))",
+          right: "auto",
+          top: "calc(20px + env(safe-area-inset-top))",
         }}
       >
         <ChevronRight size={20} strokeWidth={1.8} />
@@ -106,7 +107,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                 strokeLinecap="round"
                 strokeDasharray="1"
                 animate={{ strokeDashoffset: 1 - progress / 100 }}
-                transition={{ duration: 0.6, ease: "easeInOut" }}
+                transition={{ duration: 0.8, ease: "easeInOut" }}
                 style={{ filter: "drop-shadow(0 2px 5px rgba(184,138,79,0.28))" }}
               />
             </svg>
@@ -135,7 +136,7 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.6, ease: "easeInOut" }}
+                transition={{ duration: 0.8, ease: "easeInOut" }}
                 className={`absolute inset-x-0 top-0 flex h-9 items-center justify-center text-[14px] leading-7 ${isError ? "text-[#8f4d3d]" : "text-[#7f6a55]"}`}
               >
                 {stageText}
@@ -143,20 +144,22 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
             </AnimatePresence>
           </div>
           {isDownloading && (
-            <div className="relative mt-1 h-6 w-16" aria-live="polite" aria-atomic="true">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={progress}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.6, ease: "easeInOut" }}
-                  className="absolute inset-0 flex items-center justify-center tabular-nums text-[15px] font-bold text-[#b88a4f]"
-                  dir="ltr"
-                >
-                  {progress}%
-                </motion.span>
-              </AnimatePresence>
+            <div className="mt-1 flex h-7 items-center justify-center text-[15px] font-bold text-[#b88a4f]" aria-live="polite" aria-atomic="true" dir="ltr">
+              <span className="relative inline-flex h-6 min-w-[2ch] items-center justify-center tabular-nums">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={progress}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.8, ease: "easeInOut" }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    {progress}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+              <span className="mr-0.5 inline-flex h-6 items-center" aria-hidden="true">%</span>
             </div>
           )}
         </div>
