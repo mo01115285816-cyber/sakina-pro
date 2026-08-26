@@ -253,7 +253,7 @@ export default function SakinaLibraryScreen({
         </div>
       </header>
 
-      <main className={`mx-auto w-full pb-28 ${view === "scholar" ? "max-w-none px-0 pt-0" : "max-w-5xl px-4 pt-24 sm:px-6"}`}>
+      <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-24 sm:px-6">
         <AnimatePresence mode="wait">
           {view === "library" && (
             <motion.div key="library" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
@@ -313,11 +313,11 @@ export default function SakinaLibraryScreen({
 
           {view === "scholar" && selectedScholar && (
             <motion.div key="scholar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="relative isolate h-[min(78vh,560px)] min-h-[420px] overflow-hidden rounded-none bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:min-h-[500px]">
+              <section className="relative isolate min-h-[350px] overflow-hidden rounded-[30px] bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:min-h-[410px]">
                 {selectedScholar.photoUrl ? <img src={selectedScholar.photoUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" decoding="async" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#deab65] to-[#2b1a10]" aria-hidden="true" />}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_16%,rgba(222,171,101,0.2),transparent_40%),linear-gradient(180deg,rgba(43,26,16,0.05)_18%,rgba(43,26,16,0.2)_47%,rgba(43,26,16,0.98)_100%)]" aria-hidden="true" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(222,171,101,0.18),transparent_42%),linear-gradient(180deg,rgba(43,26,16,0.08)_18%,rgba(43,26,16,0.18)_43%,rgba(43,26,16,0.97)_100%)]" aria-hidden="true" />
                 <div className="absolute bottom-5 left-5 z-10 flex items-center gap-2 rounded-full border border-[#f2d19b]/25 bg-[#2b1a10]/35 px-3 py-2 text-xs font-black text-[#f7dfb4] backdrop-blur-md sm:bottom-7 sm:left-8" dir="rtl"><span>مصر</span><span aria-hidden="true">🇪🇬</span></div>
-                <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-8 pt-24 text-center sm:px-8 sm:pb-10">
+                <div className="relative z-10 flex min-h-[350px] flex-col justify-end px-5 pb-7 pt-16 text-center sm:min-h-[410px] sm:px-8 sm:pb-9">
                   <div className="mx-auto flex max-w-3xl flex-col items-center">
                     <h1 className="text-2xl font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:text-3xl">{selectedScholar.displayName}</h1>
                     <p className="mt-3 max-w-2xl text-xs font-bold leading-6 text-[#fdfcfb]/75 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{selectedScholar.bioShort ?? "دروس وسلاسل تعليمية مرتبة داخل مكتبة سكينة."}</p>
