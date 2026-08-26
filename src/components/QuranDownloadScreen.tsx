@@ -150,11 +150,11 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.span
                     key={progress}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute inset-0 flex items-center justify-center will-change-[opacity,transform]"
                   >
                     {progress}
                   </motion.span>
