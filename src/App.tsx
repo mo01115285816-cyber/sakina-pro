@@ -46,6 +46,7 @@ import { prefetchQcfFont } from "@/hooks/useQcfFont";
 import { PRELOAD_QCF_PAGES } from "@/constants/appVerses";
 const QuranTabScreen = lazy(() => import("@/components/QuranTabScreen"));
 const HadithBooksScreen = lazy(() => import("@/components/HadithBooksScreen"));
+const SakinaLibraryScreen = lazy(() => import("@/components/SakinaLibraryScreen"));
 const SakeenahAIScreen = lazy(() => import("@/components/SakeenahAIScreen"));
 const AsmaAlHusnaScreen = lazy(() => import("@/components/AsmaAlHusnaScreen"));
 const SettingsScreen = lazy(() => import("@/components/SettingsScreen").then((module) => ({ default: module.SettingsScreen })));
@@ -179,6 +180,7 @@ function AuthenticatedApp() {
   // Track whether to hide bottom floating navigation based on Quran sub-screens (Sheikh profile, Audio player)
   const [quranHideNav, setQuranHideNav] = useState(false);
   const [hadithHideNav, setHadithHideNav] = useState(false);
+  const [showSakinaLibrary, setShowSakinaLibrary] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   /* ── Per-Prayer Notification Preferences ── */
@@ -1519,6 +1521,7 @@ function AuthenticatedApp() {
               <HadithBooksScreen
                 onBack={handleBackToMain}
                 onHideNavChange={setHadithHideNav}
+                onOpenSakinaLibrary={() => setShowSakinaLibrary(true)}
               />
             </div>
           </Suspense>
@@ -1593,6 +1596,24 @@ function AuthenticatedApp() {
           </Suspense>
         )}
       </div>
+
+      <AnimatePresence>
+        {showSakinaLibrary && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 overflow-y-auto bg-[#ece7de]"
+          >
+            <Suspense fallback={<ScreenLoader label="جارٍ تحميل مكتبة سكينة..." />}>
+              <SakinaLibraryScreen
+                onBack={() => setShowSakinaLibrary(false)}
+                onHideNavChange={() => undefined}
+              />
+            </Suspense>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══════════════════════════════════════════════════════════════
           FLOATING BOTTOM NAVIGATION

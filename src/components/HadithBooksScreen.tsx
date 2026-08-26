@@ -49,6 +49,7 @@ import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 interface HadithBooksScreenProps {
   onBack?: () => void;
   onHideNavChange?: (hide: boolean) => void;
+  onOpenSakinaLibrary?: () => void;
 }
 
 // Local Storage Keys
@@ -233,7 +234,7 @@ export function localizeHadithGrade(grade: string | undefined): string | undefin
     .replace(/\bMaudu\b/gi, "موضوع");
 }
 
-export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBooksScreenProps) {
+export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakinaLibrary }: HadithBooksScreenProps) {
   // State: Books metadata
   const [books, setBooks] = useState<HadithBookInfo[]>(FALLBACK_BOOKS);
   const [loadingBooks, setLoadingBooks] = useState(false);
@@ -1059,6 +1060,30 @@ export default function HadithBooksScreen({ onBack, onHideNavChange }: HadithBoo
 
                 <Library className="absolute -left-4 -bottom-4 w-32 h-32 text-[#2b1a10]/5 pointer-events-none" />
               </div>
+            )}
+
+            {onOpenSakinaLibrary && (
+              <motion.button
+                type="button"
+                onClick={onOpenSakinaLibrary}
+                whileTap={{ scale: 0.985 }}
+                className="group flex w-full items-center justify-between gap-4 rounded-[28px] cut-crystal-panel p-5 text-right shadow-sm transition-colors hover:bg-[#2b1a10]/[0.03]"
+              >
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-[#2b1a10] text-[#deab65] shadow-sm">
+                    <BookText className="h-7 w-7" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="mb-1 flex items-center gap-2 text-[11px] font-black text-[#b88a4f]">
+                      <span>مكتبة سكينة</span>
+                      <span className="rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px]">قسم جديد</span>
+                    </div>
+                    <h2 className="truncate text-base font-black text-[#2b1a10]">الدروس والمحاضرات</h2>
+                    <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#7f6a55]">دروس مرتبة من الشيخ إلى السلسلة ثم الدرس، من مصادر يتم اعتمادها ومراجعتها.</p>
+                  </div>
+                </div>
+                <ChevronLeft className="h-5 w-5 shrink-0 text-[#b88a4f] transition-transform group-hover:-translate-x-0.5" />
+              </motion.button>
             )}
 
             {/* Global Search Bar with Integrated Scope Dropdown Toggle */}
