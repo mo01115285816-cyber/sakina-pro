@@ -313,16 +313,14 @@ export default function SakinaLibraryScreen({
 
           {view === "scholar" && selectedScholar && (
             <motion.div key="scholar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="cut-crystal-panel overflow-hidden rounded-[30px]">
-                <div className="relative overflow-hidden bg-[#2b1a10] px-5 pb-7 pt-6 text-center text-[#fdfcfb] sm:px-8">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(222,171,101,0.26),transparent_48%),linear-gradient(180deg,rgba(43,26,16,0.3),#2b1a10)]" aria-hidden="true" />
-                  <div className="relative z-10 flex flex-col items-center">
-                    <div className="h-28 w-28 overflow-hidden rounded-[32px] border border-[#deab65]/60 bg-[#deab65]/15 p-1 shadow-[0_14px_36px_rgba(0,0,0,0.28)] sm:h-32 sm:w-32">
-                      <AvatarImage src={selectedScholar.photoUrl} alt={selectedScholar.displayName} fallback={selectedScholar.displayName.charAt(0)} large />
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-black text-[#f2d19b]"><span>بورتفوليو الشيخ</span><span className="text-[#fdfcfb]/45">·</span><span>مصر</span>{selectedScholar.verificationStatus === "verified" && <span className="inline-flex items-center gap-1 rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px] text-[#f7dfb4]"><ShieldCheck className="h-3 w-3" />{verifiedLabel(selectedScholar.verificationStatus)}</span>}</div>
-                    <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">{selectedScholar.displayName}</h1>
-                    <p className="mt-3 max-w-2xl text-xs font-bold leading-6 text-[#fdfcfb]/70">{selectedScholar.bioShort ?? "دروس وسلاسل تعليمية مرتبة داخل مكتبة سكينة."}</p>
+              <section className="relative isolate min-h-[350px] overflow-hidden rounded-[30px] bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:min-h-[410px]">
+                {selectedScholar.photoUrl ? <img src={selectedScholar.photoUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" decoding="async" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#deab65] to-[#2b1a10]" aria-hidden="true" />}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(222,171,101,0.18),transparent_42%),linear-gradient(180deg,rgba(43,26,16,0.08)_18%,rgba(43,26,16,0.18)_43%,rgba(43,26,16,0.97)_100%)]" aria-hidden="true" />
+                <div className="relative z-10 flex min-h-[350px] flex-col justify-end px-5 pb-7 pt-16 text-center sm:min-h-[410px] sm:px-8 sm:pb-9">
+                  <div className="mx-auto flex max-w-3xl flex-col items-center">
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-black text-[#f2d19b]"><span>بورتفوليو الشيخ</span><span className="text-[#fdfcfb]/45">·</span><span>مصر</span>{selectedScholar.verificationStatus === "verified" && <span className="inline-flex items-center gap-1 rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px] text-[#f7dfb4]"><ShieldCheck className="h-3 w-3" />{verifiedLabel(selectedScholar.verificationStatus)}</span>}</div>
+                    <h1 className="mt-2 text-2xl font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:text-3xl">{selectedScholar.displayName}</h1>
+                    <p className="mt-3 max-w-2xl text-xs font-bold leading-6 text-[#fdfcfb]/75 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{selectedScholar.bioShort ?? "دروس وسلاسل تعليمية مرتبة داخل مكتبة سكينة."}</p>
                   </div>
                 </div>
               </section>
