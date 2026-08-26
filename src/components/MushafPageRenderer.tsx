@@ -40,11 +40,9 @@ interface Props {
   playingVerseKey: string | null;
   initialPageData?: MushafQcfV2Page | null;
   onStatusChange: (status: MushafPageRenderStatus) => void;
-  onWordClick: (word: MushafQcfV2Word, event: React.MouseEvent) => void;
   onWordLongPressStart: (
     pageNumber: number,
     word: MushafQcfV2Word,
-    lineText: string,
     event: React.TouchEvent | React.MouseEvent,
   ) => void;
   onWordLongPressEnd: () => void;
@@ -73,7 +71,6 @@ export default function MushafPageRenderer({
   playingVerseKey,
   initialPageData,
   onStatusChange,
-  onWordClick,
   onWordLongPressStart,
   onWordLongPressEnd,
 }: Props) {
@@ -195,13 +192,14 @@ export default function MushafPageRenderer({
               <span
                 key={`${lineNum}-${wordIndex}`}
                 className={className}
-                onClick={(event) => onWordClick(word, event)}
-                onTouchStart={(event) => onWordLongPressStart(pageNumber, word, lineObj.text || word.word, event)}
-                onTouchEnd={onWordLongPressEnd}
-                onTouchMove={onWordLongPressEnd}
-                onMouseDown={(event) => onWordLongPressStart(pageNumber, word, lineObj.text || word.word, event)}
-                onMouseUp={onWordLongPressEnd}
+                onTouchStart={(event) => onWordLongPressStart(pageNumber, word, event)}
+                onTouchEnd={(event) => { event.stopPropagation(); onWordLongPressEnd(); }}
+                onTouchCancel={(event) => { event.stopPropagation(); onWordLongPressEnd(); }}
+                onTouchMove={(event) => { event.stopPropagation(); onWordLongPressEnd(); }}
+                onMouseDown={(event) => onWordLongPressStart(pageNumber, word, event)}
+                onMouseUp={(event) => { event.stopPropagation(); onWordLongPressEnd(); }}
                 onMouseLeave={onWordLongPressEnd}
+                onClick={(event) => event.stopPropagation()}
               >
                 {word.qpcV2}
               </span>

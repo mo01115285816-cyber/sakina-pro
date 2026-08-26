@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  X, Play, Pause, BookOpen, Download, Settings, Image as ImageIcon, ChevronRight, Copy, Bookmark, Palette
+  X, Play, Pause, BookOpen, Download, Settings, Image as ImageIcon, ChevronRight, Copy, Bookmark, Palette, Check
 } from "lucide-react";
 import { surahNames } from "@/data/surahNames";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
@@ -13,6 +13,16 @@ import { useMushafSpreadLayout } from "@/hooks/useMushafSpreadLayout";
 import MushafSpreadSurface from "@/components/MushafSpreadSurface";
 import MushafSpreadControlRail from "@/components/MushafSpreadControlRail";
 import type { MushafQcfV2Page, MushafQcfV2Word } from "@/services/MushafQcfV2LayoutService";
+import type { Reciter } from "@/types/quran";
+import {
+  READER_FALLBACK_RECITERS,
+  getMoshafForSurah,
+  resolveQuranChapterAudio,
+  supportsSyncedRecitation,
+  type QuranChapterAudioSource,
+} from "@/services/QuranReaderAudioService";
+import { downloadAudioFile, getAudioUrl, isAudioDownloaded, removeAudioFile } from "@/utils/audioCache";
+import { publicAssetUrl } from "@/utils/publicAssetUrl";
 
 const SURAH_START_PAGES: Record<number, number> = {"1":1,"2":2,"3":50,"4":77,"5":106,"6":128,"7":151,"8":177,"9":187,"10":208,"11":221,"12":235,"13":249,"14":255,"15":262,"16":267,"17":282,"18":293,"19":305,"20":312,"21":322,"22":332,"23":342,"24":350,"25":359,"26":367,"27":377,"28":385,"29":396,"30":404,"31":411,"32":415,"33":418,"34":428,"35":434,"36":440,"37":446,"38":453,"39":458,"40":467,"41":477,"42":483,"43":489,"44":496,"45":499,"46":502,"47":507,"48":511,"49":515,"50":518,"51":520,"52":523,"53":526,"54":528,"55":531,"56":534,"57":537,"58":542,"59":545,"60":549,"61":551,"62":553,"63":554,"64":556,"65":558,"66":560,"67":562,"68":564,"69":566,"70":568,"71":570,"72":572,"73":574,"74":575,"75":577,"76":578,"77":580,"78":582,"79":583,"80":585,"81":586,"82":587,"83":587,"84":589,"85":590,"86":591,"87":591,"88":592,"89":593,"90":594,"91":595,"92":595,"93":596,"94":596,"95":597,"96":597,"97":598,"98":598,"99":599,"100":599,"101":600,"102":600,"103":601,"104":601,"105":601,"106":602,"107":602,"108":602,"109":603,"110":603,"111":603,"112":604,"113":604,"114":604};
 
@@ -114,12 +124,6 @@ const THEMES: Record<string, ThemeOption> = {
   }
 };
 
-const MOCK_RECITERS = [
-  { id: 1, name: "مشاري راشد العفاسي" },
-  { id: 2, name: "عبد الباسط عبد الصمد" },
-  { id: 3, name: "محمود خليل الحصري" },
-  { id: 4, name: "ياسر الدوسري" },
-];
 
 interface Props {
   surahId: number;
@@ -178,6 +182,12 @@ export default function QuranReaderScreen({
   const [selectedVerseForAction, setSelectedVerseForAction] = useState<SelectedVerseInfo | null>(null);
 
   const [highlightedVerseKey, setHighlightedVerseKey] = useState<string | null>(null);
+  const activeAudioSourceRef = useRef<QuranChapterAudioSource | null>(null);
+  const playbackIntentRef = useRef<'single' | 'continuous' | null>(null);
+  const currentPageRef = useRef(currentPage);
+  const currentBlobUrlRef = useRef<string | null>(null);
+  const versePagesRef = useRef<Record<string, number>>({});
+  const verseTextsRef = useRef<Record<string, string>>({});
 
   const [showTafsir, setShowTafsir] = useState(false);
   const [tafsirContent, setTafsirContent] = useState<{
@@ -201,7 +211,12 @@ export default function QuranReaderScreen({
   const [repeatSettings, setRepeatSettings] = useState({ count: 1, current: 0 });
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [showReciterModal, setShowReciterModal] = useState(false);
-  const [selectedReciter, setSelectedReciter] = useState<number>(1);
+  const [reciters, setReciters] = useState<Reciter[]>(READER_FALLBACK_RECITERS);
+  const [isRecitersLoading, setIsRecitersLoading] = useState(true);
+  const [selectedReciter, setSelectedReciter] = useState<Reciter>(READER_FALLBACK_RECITERS[0]);
+  const [downloadedReciterAudio, setDownloadedReciterAudio] = useState<Record<string, boolean>>({});
+  const [downloadingReciterId, setDownloadingReciterId] = useState<number | null>(null);
+  const [audioStatus, setAudioStatus] = useState<string | null>(null);
 
   const [reflectionVerse, setReflectionVerse] = useState<any>(null);
 
@@ -235,6 +250,70 @@ export default function QuranReaderScreen({
     }
     return surahId;
   }, [pageData, surahId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadReaderReciters = async () => {
+      try {
+        const response = await fetch("https://www.mp3quran.net/api/v3/reciters?language=ar");
+        if (!response.ok) throw new Error(`RECITERS_API_${response.status}`);
+        const payload = await response.json() as { reciters?: Reciter[] };
+        const syncedReciters = Array.isArray(payload.reciters)
+          ? payload.reciters.filter((reciter) => supportsSyncedRecitation(reciter, surahId))
+          : [];
+        if (!mounted || syncedReciters.length === 0) return;
+        setReciters(syncedReciters);
+        setSelectedReciter((current) => syncedReciters.find((reciter) => reciter.id === current.id) ?? syncedReciters[0]);
+      } catch (error) {
+        console.warn("تعذر تحديث قائمة القراء؛ ستُستخدم القائمة المحلية", error);
+      } finally {
+        if (mounted) setIsRecitersLoading(false);
+      }
+    };
+    loadReaderReciters();
+    return () => {
+      mounted = false;
+    };
+  }, [surahId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadVerseIndex = async () => {
+      try {
+        const [pagesResponse, textsResponse] = await Promise.all([
+          fetch(publicAssetUrl("data/mushaf-v2/verse-pages.json")),
+          fetch(publicAssetUrl("data/mushaf-v2/verse-texts.json")),
+        ]);
+        if (!pagesResponse.ok || !textsResponse.ok) throw new Error("VERSE_INDEX_LOAD_FAILED");
+        const [pages, texts] = await Promise.all([
+          pagesResponse.json() as Promise<Record<string, number>>,
+          textsResponse.json() as Promise<Record<string, string>>,
+        ]);
+        if (!mounted) return;
+        versePagesRef.current = pages;
+        verseTextsRef.current = texts;
+      } catch (error) {
+        console.warn("تعذر تحميل فهرس الآيات المحلي", error);
+      }
+    };
+    void loadVerseIndex();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      if (currentBlobUrlRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentBlobUrlRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -437,8 +516,35 @@ export default function QuranReaderScreen({
     swipeRef.current.horizontal = false;
   };
 
+  const getPageVerseKeys = (page: MushafQcfV2Page | null, chapterId: number): string[] => {
+    if (!page) return [];
+    const keys: string[] = [];
+    for (const line of page.lines) {
+      for (const word of line.words ?? []) {
+        const key = extractVerseKeyFromWord(word);
+        if (key?.startsWith(`${chapterId}:`) && !keys.includes(key)) keys.push(key);
+      }
+    }
+    return keys;
+  };
+
+  const getFirstVerseOnCurrentPage = (): string | null => {
+    const pageKeys = getPageVerseKeys(pageData, surahId);
+    return pageKeys[0] ?? null;
+  };
+
+  const getVerseText = (verseKey: string, fallbackWord: string): string => {
+    return verseTextsRef.current[verseKey] || fallbackWord;
+  };
+
   // Verse interaction (long press -> action card)
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
+  const playbackRequestRef = useRef(0);
+  const selectedVerseKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    selectedVerseKeyRef.current = selectedVerseForAction?.verse_key ?? null;
+  }, [selectedVerseForAction]);
 
   const extractVerseKeyFromWord = (word: MushafQcfV2Word): string | null => {
     if (!word.location) return null;
@@ -452,22 +558,23 @@ export default function QuranReaderScreen({
   const handleWordLongPressStart = (
     pageNumber: number,
     word: MushafQcfV2Word,
-    lineText: string,
     e: React.TouchEvent | React.MouseEvent,
   ) => {
     e.stopPropagation();
+    handleWordLongPressEnd();
     const verseKey = extractVerseKeyFromWord(word);
     if (!verseKey) return;
     const parts = word.location.split(':');
     const verse: SelectedVerseInfo = {
       verse_key: verseKey,
-      text_uthmani: lineText || word.word,
+      text_uthmani: getVerseText(verseKey, word.word),
       chapter_id: parseInt(parts[0], 10),
       verse_number: parseInt(parts[1], 10),
       page: pageNumber,
     };
 
     touchTimer.current = setTimeout(() => {
+      touchTimer.current = null;
       setSelectedVerseForAction(verse);
       setShowActionCard(true);
     }, 500);
@@ -480,19 +587,128 @@ export default function QuranReaderScreen({
     }
   };
 
-  const handleWordClick = (word: MushafQcfV2Word, e: React.MouseEvent) => {
-    e.stopPropagation();
-    handleWordLongPressEnd();
-    const verseKey = extractVerseKeyFromWord(word);
-    if (!verseKey) return;
-    // Check if this is the last word of a verse (contains Arabic number)
-    const isEnd = word.charType === 'end' || /\d+$/.test(word.word) || /[\u0660-\u0669]$/.test(word.word);
-    if (isEnd) {
+  const stopReaderAudio = (statusMessage: string | null = null) => {
+    const wasSingleVerse = playbackIntentRef.current === 'single';
+    playbackRequestRef.current += 1;
+    audioRef.current?.pause();
+    setIsPlaying(false);
+    setPlayingVerseKey(null);
+    playbackIntentRef.current = null;
+    activeAudioSourceRef.current = null;
+    if (wasSingleVerse) {
+      setShowActionCard(false);
+      setSelectedVerseForAction(null);
+    }
+    setAudioStatus(statusMessage);
+  };
+
+  const waitForAudioMetadata = (audio: HTMLAudioElement): Promise<void> => {
+    if (audio.readyState >= 1) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        audio.removeEventListener("loadedmetadata", handleLoaded);
+        audio.removeEventListener("error", handleError);
+      };
+      const handleLoaded = () => {
+        cleanup();
+        resolve();
+      };
+      const handleError = () => {
+        cleanup();
+        reject(new Error("QURAN_AUDIO_METADATA_FAILED"));
+      };
+      audio.addEventListener("loadedmetadata", handleLoaded, { once: true });
+      audio.addEventListener("error", handleError, { once: true });
+    });
+  };
+
+  const startReaderPlayback = async (
+    verseKey: string,
+    intent: 'single' | 'continuous',
+    reciterOverride: Reciter = selectedReciter,
+  ) => {
+    if (!audioRef.current) return;
+    stopReaderAudio();
+    const requestId = ++playbackRequestRef.current;
+    const source = await resolveQuranChapterAudio(reciterOverride, surahId);
+    if (requestId !== playbackRequestRef.current || !source) return;
+
+    const timestamp = source.timestamps.find((item) => item.verse_key === verseKey);
+    if (intent === 'single' && (!timestamp || source.timestamps.length === 0)) {
+      setAudioStatus("التوقيت الدقيق لهذه التلاوة غير متاح حاليًا.");
+      return;
+    }
+
+    try {
+      const finalUrl = await getAudioUrl(source.audioUrl);
+      if (requestId !== playbackRequestRef.current || !audioRef.current) return;
+      if (currentBlobUrlRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentBlobUrlRef.current);
+      }
+      currentBlobUrlRef.current = finalUrl;
+      const audio = audioRef.current;
+      audio.pause();
+      audio.src = finalUrl;
+      audio.load();
+      await waitForAudioMetadata(audio);
+      if (requestId !== playbackRequestRef.current) return;
+      activeAudioSourceRef.current = source;
+      playbackIntentRef.current = intent;
+      selectedVerseKeyRef.current = intent === 'single' ? verseKey : null;
+      if (timestamp) audio.currentTime = timestamp.timestamp_from / 1000;
+      setAudioStatus(null);
       setPlayingVerseKey(verseKey);
       setIsPlaying(true);
-    } else {
-      setHighlightedVerseKey(prev => (prev === verseKey ? null : verseKey));
+      await audio.play();
+    } catch (error) {
+      if (requestId !== playbackRequestRef.current) return;
+      console.error("Failed to start Quran recitation", error);
+      stopReaderAudio("تعذر تشغيل تلاوة القارئ. تحقق من الاتصال وحاول مرة أخرى.");
     }
+  };
+
+  const handleAudioTimeUpdate = () => {
+    const audio = audioRef.current;
+    const source = activeAudioSourceRef.current;
+    if (!audio || !source || source.timestamps.length === 0) return;
+    const currentMs = audio.currentTime * 1000;
+    const activeTimestamp = source.timestamps.find(
+      (item) => currentMs >= item.timestamp_from && currentMs < item.timestamp_to,
+    );
+
+    if (playbackIntentRef.current === 'single') {
+      const selectedKey = selectedVerseKeyRef.current;
+      const selectedTimestamp = source.timestamps.find((item) => item.verse_key === selectedKey);
+      if (selectedTimestamp && currentMs >= selectedTimestamp.timestamp_to - 70) {
+        stopReaderAudio();
+        return;
+      }
+      if (!activeTimestamp) return;
+      setPlayingVerseKey(activeTimestamp.verse_key);
+      return;
+    }
+
+    if (!activeTimestamp) return;
+    setPlayingVerseKey(activeTimestamp.verse_key);
+
+    const targetPage = versePagesRef.current[activeTimestamp.verse_key];
+    if (targetPage && targetPage !== currentPageRef.current) {
+      setCurrentPage(targetPage);
+    }
+  };
+
+  const handlePrimaryPlay = () => {
+    setPlayMode('continuous');
+    if (isPlaying && playbackIntentRef.current === 'continuous') {
+      stopReaderAudio();
+      return;
+    }
+    const firstVerseKey = getFirstVerseOnCurrentPage();
+    if (!firstVerseKey) {
+      setAudioStatus("جاري تجهيز آيات الصفحة للتلاوة.");
+      return;
+    }
+    void startReaderPlayback(firstVerseKey, 'continuous');
   };
 
   // Actions
@@ -567,9 +783,9 @@ export default function QuranReaderScreen({
 
   const handlePlaySelectedVerse = () => {
     if (!selectedVerseForAction) return;
-    setIsPlaying(true);
-    setPlayingVerseKey(selectedVerseForAction.verse_key);
+    const verseKey = selectedVerseForAction.verse_key;
     setShowActionCard(false);
+    void startReaderPlayback(verseKey, 'single');
   };
 
   const handleCopyVerse = (text: string) => {
@@ -583,12 +799,85 @@ export default function QuranReaderScreen({
   };
 
   const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    if (isPlaying && playbackIntentRef.current === 'continuous') {
+      stopReaderAudio();
+      return;
+    }
+    if (isPlaying) {
+      handlePrimaryPlay();
+      return;
+    }
+    if (selectedVerseForAction) {
+      void startReaderPlayback(selectedVerseForAction.verse_key, 'single');
+      return;
+    }
+    handlePrimaryPlay();
   };
 
   const handleAudioEnded = () => {
-    setIsPlaying(false);
+    stopReaderAudio();
   };
+
+  const getReciterDownloadUrl = async (reciter: Reciter): Promise<string | null> => {
+    const source = await resolveQuranChapterAudio(reciter, surahId);
+    return source?.audioUrl ?? null;
+  };
+
+  const getReciterDownloadKey = (reciter: Reciter): string => {
+    return `${reciter.id}:${surahId}`;
+  };
+
+  const handleSelectReciter = (reciter: Reciter) => {
+    setSelectedReciter(reciter);
+    setShowReciterModal(false);
+    if (isPlaying) {
+      const verseKey = playingVerseKey || getFirstVerseOnCurrentPage();
+      if (verseKey) void startReaderPlayback(verseKey, playbackIntentRef.current ?? 'continuous', reciter);
+    }
+  };
+
+  const handleDownloadReciterSurah = async (reciter: Reciter, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (downloadingReciterId !== null) return;
+    setDownloadingReciterId(reciter.id);
+    try {
+      const url = await getReciterDownloadUrl(reciter);
+      if (!url) throw new Error("RECITER_AUDIO_URL_UNAVAILABLE");
+      const downloadKey = getReciterDownloadKey(reciter);
+      if (downloadedReciterAudio[downloadKey]) {
+        await removeAudioFile(url);
+        setDownloadedReciterAudio((current) => ({ ...current, [downloadKey]: false }));
+        return;
+      }
+      await downloadAudioFile(url);
+      setDownloadedReciterAudio((current) => ({ ...current, [downloadKey]: true }));
+    } catch (error) {
+      console.error("Failed to download selected reciter surah", error);
+      setAudioStatus("تعذر تنزيل تلاوة السورة لهذا القارئ.");
+    } finally {
+      setDownloadingReciterId(null);
+    }
+  };
+
+  useEffect(() => {
+    void resolveQuranChapterAudio(selectedReciter, surahId);
+  }, [selectedReciter, surahId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkReciterDownloads = async () => {
+      const entries = await Promise.all(reciters.map(async (reciter) => {
+        const url = await getReciterDownloadUrl(reciter);
+        return url ? [getReciterDownloadKey(reciter), await isAudioDownloaded(url)] as const : null;
+      }));
+      if (!mounted) return;
+      setDownloadedReciterAudio(Object.fromEntries(entries.filter((entry): entry is readonly [string, boolean] => entry !== null)));
+    };
+    void checkReciterDownloads();
+    return () => {
+      mounted = false;
+    };
+  }, [reciters, surahId]);
 
   const isPrimaryPageReady = !isLoading && pageData !== null && isFontLoaded;
   const isOpeningPage = currentPage === 1 || currentPage === 2;
@@ -627,9 +916,10 @@ export default function QuranReaderScreen({
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
+        onTimeUpdate={handleAudioTimeUpdate}
         onError={(e) => {
           console.error("Audio playback error", e);
-          setIsPlaying(false);
+          stopReaderAudio("تعذر تشغيل ملف التلاوة لهذا القارئ.");
         }}
         className="hidden"
       />
@@ -699,7 +989,6 @@ export default function QuranReaderScreen({
                   highlightedVerseKey={highlightedVerseKey}
                   selectedVerseKey={selectedVerseForAction?.verse_key ?? null}
                   playingVerseKey={playingVerseKey}
-                  onWordClick={handleWordClick}
                   onWordLongPressStart={handleWordLongPressStart}
                   onWordLongPressEnd={handleWordLongPressEnd}
                 />
@@ -723,11 +1012,7 @@ export default function QuranReaderScreen({
                 onTogglePlay={togglePlayPause}
                 onShowReciter={() => setShowReciterModal(true)}
                 onToggleAudioSettings={() => setShowAudioSettings(!showAudioSettings)}
-                onStopPlayer={() => {
-                  audioRef.current?.pause();
-                  setIsPlaying(false);
-                  setPlayingVerseKey(null);
-                }}
+                onStopPlayer={() => stopReaderAudio()}
                 onPlaySelected={handlePlaySelectedVerse}
                 onShowTafsir={handleShowTafsirForSelected}
                 onShowReflection={handleShowReflectionCard}
@@ -740,6 +1025,16 @@ export default function QuranReaderScreen({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {audioStatus && (
+        <div
+          className="!fixed bottom-[5.25rem] left-1/2 z-[75] w-[min(90vw,360px)] -translate-x-1/2 rounded-full border border-[#b88a4f]/25 bg-[#fdfcfb]/90 px-4 py-2 text-center text-[11px] font-bold text-[#8f4d3d] shadow-lg backdrop-blur"
+          role="status"
+          aria-live="polite"
+        >
+          {audioStatus}
+        </div>
+      )}
 
       {/* Action Card for Selected Verse */}
       <AnimatePresence>
@@ -990,7 +1285,7 @@ export default function QuranReaderScreen({
 
               <button
                 className="w-8 h-8 rounded-full flex items-center justify-center bg-[#b88a4f] text-[#fff9f1] shadow-md transition-all duration-200 hover:bg-[#a0753e] active:scale-95"
-                onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}
+                onClick={(e) => { e.stopPropagation(); handlePrimaryPlay(); }}
               >
                 {isPlaying && playMode === 'continuous' ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
               </button>
@@ -1030,19 +1325,40 @@ export default function QuranReaderScreen({
                 اختر القارئ
               </div>
               <div className="overflow-y-auto custom-scrollbar p-2 flex-1">
-                {MOCK_RECITERS.map(r => (
-                  <button
-                    key={r.id}
-                    onClick={() => {
-                      setSelectedReciter(r.id);
-                      setShowReciterModal(false);
-                    }}
-                    className={`w-full text-right px-4 py-3 rounded-xl mb-1 transition-colors flex items-center justify-between font-sans ${selectedReciter === r.id ? `bg-[#b88a4f]/10 text-[#b88a4f]` : `hover:opacity-80`}`}
-                  >
-                    <span>{r.name}</span>
-                    {selectedReciter === r.id && <div className={`w-2 h-2 rounded-full ${activeTheme.accent.replace('text-', 'bg-')}`}></div>}
-                  </button>
-                ))}
+                {isRecitersLoading && (
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 text-xs opacity-65">
+                    <SakeenahLineSpinner size={18} color={activeTheme.accentHex} label="جاري تحميل القراء" />
+                    <span>جاري تحميل القراء...</span>
+                  </div>
+                )}
+                {reciters.map((reciter) => {
+                  const moshaf = getMoshafForSurah(reciter, surahId);
+                  const downloadKey = getReciterDownloadKey(reciter);
+                  const isDownloaded = Boolean(downloadedReciterAudio[downloadKey]);
+                  const isDownloading = downloadingReciterId === reciter.id;
+                  return (
+                    <div key={reciter.id} className={`mb-1 flex items-center gap-1 rounded-xl transition-colors ${selectedReciter.id === reciter.id ? "bg-[#b88a4f]/10 text-[#b88a4f]" : "hover:bg-black/5"}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectReciter(reciter)}
+                        className="min-w-0 flex-1 px-3 py-3 text-right font-sans"
+                      >
+                        <span className="block truncate font-bold">{reciter.name}</span>
+                        <span className="mt-0.5 block truncate text-[10px] opacity-60">{moshaf?.name || "تلاوة متاحة"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => handleDownloadReciterSurah(reciter, event)}
+                        disabled={isDownloading}
+                        aria-label={`${isDownloaded ? "حذف" : "تنزيل"} تلاوة ${reciter.name} لسورة ${surahNames[surahId] || surahId}`}
+                        title={`${isDownloaded ? "حذف" : "تنزيل"} صوت السورة الحالية`}
+                        className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#2b1a10] transition-colors hover:bg-[#b88a4f]/15 disabled:opacity-50"
+                      >
+                        {isDownloading ? <SakeenahLineSpinner size={16} color={activeTheme.accentHex} label="جاري التنزيل" /> : isDownloaded ? <Check size={16} className={activeTheme.accent} /> : <Download size={16} />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           </motion.div>

@@ -16,11 +16,9 @@ interface Props {
   highlightedVerseKey: string | null;
   selectedVerseKey: string | null;
   playingVerseKey: string | null;
-  onWordClick: (word: MushafQcfV2Word, event: React.MouseEvent) => void;
   onWordLongPressStart: (
     pageNumber: number,
     word: MushafQcfV2Word,
-    lineText: string,
     event: React.TouchEvent | React.MouseEvent,
   ) => void;
   onWordLongPressEnd: () => void;
@@ -39,7 +37,6 @@ export default function MushafSpreadSurface({
   highlightedVerseKey,
   selectedVerseKey,
   playingVerseKey,
-  onWordClick,
   onWordLongPressStart,
   onWordLongPressEnd,
 }: Props) {
@@ -105,7 +102,6 @@ export default function MushafSpreadSurface({
               selectedVerseKey={selectedVerseKey}
               playingVerseKey={playingVerseKey}
               onStatusChange={handleStatusChange}
-              onWordClick={onWordClick}
               onWordLongPressStart={onWordLongPressStart}
               onWordLongPressEnd={onWordLongPressEnd}
             />
