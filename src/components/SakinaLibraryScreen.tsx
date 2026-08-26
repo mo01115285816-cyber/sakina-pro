@@ -313,7 +313,7 @@ export default function SakinaLibraryScreen({
 
           {view === "scholar" && selectedScholar && (
             <motion.div key="scholar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="relative isolate -mx-4 -mt-4 h-[min(62svh,520px)] min-h-[360px] overflow-hidden rounded-b-[30px] bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:-mx-6 sm:min-h-[420px]">
+              <section className="relative isolate -mx-4 -mt-24 h-[min(62svh,520px)] min-h-[360px] overflow-hidden rounded-b-[28px] bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:-mx-6 sm:min-h-[420px]">
                 {selectedScholar.photoUrl ? <img src={selectedScholar.photoUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-[center_24%]" loading="eager" decoding="async" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#deab65] to-[#2b1a10]" aria-hidden="true" />}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(222,171,101,0.18),transparent_42%),linear-gradient(180deg,rgba(43,26,16,0.08)_18%,rgba(43,26,16,0.18)_43%,rgba(43,26,16,0.97)_100%)]" aria-hidden="true" />
                 <div className="absolute bottom-5 left-5 z-10 flex items-center gap-2 rounded-full border border-[#f2d19b]/25 bg-[#2b1a10]/35 px-3 py-2 text-xs font-black text-[#f7dfb4] backdrop-blur-md sm:bottom-7 sm:left-8" dir="rtl"><span>مصر</span><span aria-hidden="true">🇪🇬</span></div>
