@@ -313,10 +313,10 @@ export default function SakinaLibraryScreen({
 
           {view === "scholar" && selectedScholar && (
             <motion.div key="scholar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="relative isolate -mx-4 -mt-24 h-[min(62svh,520px)] min-h-[360px] overflow-hidden rounded-b-[28px] bg-[#2b1a10] text-[#fdfcfb] shadow-[0_18px_48px_rgba(43,26,16,0.16)] sm:-mx-6 sm:min-h-[420px]">
+              <section className="relative isolate -mx-4 -mt-24 h-[min(62svh,520px)] min-h-[360px] overflow-hidden rounded-b-[28px] border border-[#fdfcfb]/10 bg-[#2b1a10] text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)] sm:-mx-6 sm:min-h-[420px]">
                 {selectedScholar.photoUrl ? <img src={selectedScholar.photoUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-[center_24%]" loading="eager" decoding="async" /> : <div className="absolute inset-0 bg-gradient-to-br from-[#deab65] to-[#2b1a10]" aria-hidden="true" />}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(222,171,101,0.18),transparent_42%),linear-gradient(180deg,rgba(43,26,16,0.08)_18%,rgba(43,26,16,0.18)_43%,rgba(43,26,16,0.97)_100%)]" aria-hidden="true" />
-                <div className="absolute bottom-5 left-5 z-10 flex items-center gap-2 rounded-full border border-[#f2d19b]/25 bg-[#2b1a10]/35 px-3 py-2 text-xs font-black text-[#f7dfb4] backdrop-blur-md sm:bottom-7 sm:left-8" dir="rtl"><span>مصر</span><span aria-hidden="true">🇪🇬</span></div>
+                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1 rounded-full border border-[#deab65]/25 bg-[#2b1a10]/45 px-1.5 py-0.5 text-[9px] font-bold leading-none text-[#f7dfb4] shadow-[0_8px_20px_-8px_rgba(43,26,16,0.45),inset_0_1px_0_rgba(222,171,101,0.25)] backdrop-blur-md sm:bottom-6 sm:left-6 sm:px-2 sm:py-1 sm:text-[10px]" dir="rtl"><span>مصر</span><span aria-hidden="true" className="text-[10px]">🇪🇬</span></div>
                 <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-7 pt-16 text-center sm:px-8 sm:pb-9">
                   <div className="mx-auto flex max-w-3xl flex-col items-center">
                     <h1 className="text-2xl font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:text-3xl">{selectedScholar.displayName}</h1>
