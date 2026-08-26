@@ -655,6 +655,10 @@ export default function QuranReaderScreen({
       activeAudioSourceRef.current = source;
       playbackIntentRef.current = intent;
       selectedVerseKeyRef.current = intent === 'single' ? verseKey : null;
+      if (intent === 'continuous') {
+        setShowActionCard(false);
+        setSelectedVerseForAction(null);
+      }
       if (timestamp) audio.currentTime = timestamp.timestamp_from / 1000;
       setAudioStatus(null);
       setPlayingVerseKey(verseKey);
