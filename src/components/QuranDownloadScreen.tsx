@@ -146,19 +146,8 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
           </div>
           {isDownloading && (
             <div className="mt-1 flex h-7 items-center justify-center text-[15px] font-bold text-[#b88a4f]" aria-live="polite" aria-atomic="true" dir="ltr">
-              <span className="relative inline-flex h-6 min-w-[2ch] items-center justify-center tabular-nums">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.span
-                    key={progress}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute inset-0 flex items-center justify-center will-change-[opacity,transform]"
-                  >
-                    {progress}
-                  </motion.span>
-                </AnimatePresence>
+              <span className="inline-flex h-6 min-w-[2ch] items-center justify-center tabular-nums">
+                {progress}
               </span>
               <span className="ml-0.5 inline-flex h-6 items-center" aria-hidden="true">%</span>
             </div>
