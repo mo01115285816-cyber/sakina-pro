@@ -15,6 +15,15 @@ const RECITER_IMAGE_PATHS: Record<string, string> = {
   "ahmed-bin-taleb": publicAssetUrl(
     "images/quran-recitation/ahmed-bin-taleb.jpg",
   ),
+  "muhammad-ayyub": publicAssetUrl(
+    "images/quran-recitation/muhammad-ayyub.jpg",
+  ),
+  "abdullah-abdulmohsen-al-qarafi": publicAssetUrl(
+    "images/quran-recitation/abdullah-abdulmohsen-al-qarafi.jpg",
+  ),
+  "mishary-rashid-al-afasy": publicAssetUrl(
+    "images/quran-recitation/mishary-rashid-al-afasy.jpg",
+  ),
 };
 
 export type PureAudioTrack = {
