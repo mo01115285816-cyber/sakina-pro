@@ -7,6 +7,18 @@ export type SakinaLibraryStatus =
 
 export type SakinaSourceProvider = "youtube";
 
+export interface SakinaScholarSource {
+  id: string;
+  provider: SakinaSourceProvider;
+  channelId: string;
+  channelUrl: string;
+  channelTitle: string;
+  labelAr: string;
+  descriptionAr: string;
+  status: SakinaLibraryStatus;
+  verifiedAt?: string;
+}
+
 export interface SakinaLessonSource {
   provider: SakinaSourceProvider;
   channelId: string;
@@ -51,6 +63,7 @@ export interface SakinaScholar {
   bioShort?: string;
   verificationStatus: "pending" | "verified" | "rejected" | "archived";
   verificationSourceUrl?: string;
+  sources?: SakinaScholarSource[];
   series: SakinaLessonSeries[];
 }
 

@@ -1,13 +1,50 @@
+import { publicAssetUrl } from "@/utils/publicAssetUrl";
 import type { SakinaLibraryCatalog } from "@/types/sakina-library";
 
 /**
- * المرحلة الأولى تبدأ بكتالوج فارغ عمدًا.
- * لا يُضاف شيخ أو قناة أو درس قبل اعتماد المصدر والرابط من مدير المحتوى.
+ * الخطوة الأولى من بورتفوليو أمجد سمير: هوية الشيخ ومصادره فقط.
+ * لا توجد دروس منشورة حتى تمر كل سلسلة وفيديو بالمراجعة اليدوية.
  */
 export const SAKINA_LIBRARY_CATALOG: SakinaLibraryCatalog = {
-  version: "0.1.0",
-  updatedAt: "2026-08-26T00:00:00.000Z",
-  scholars: [],
+  version: "0.2.0",
+  updatedAt: "2026-08-27T00:00:00.000Z",
+  scholars: [
+    {
+      id: "amgad-samir",
+      slug: "amgad-samir",
+      nameAr: "أمجد سمير",
+      displayName: "الشيخ أمجد سمير",
+      photoUrl: publicAssetUrl("images/sakina-library/amgad-samir.jpg"),
+      bioShort: "دروس ومحتوى دعوي وتربوي، مع مسارات علمية طويلة مرتبة للدراسة الهادئة.",
+      verificationStatus: "verified",
+      verificationSourceUrl: "https://www.youtube.com/@amgad_samir",
+      sources: [
+        {
+          id: "amgad-samir-general-youtube",
+          provider: "youtube",
+          channelId: "UC_FFy2YxiElNMba-t-6VwTA",
+          channelUrl: "https://www.youtube.com/@amgad_samir",
+          channelTitle: "أمجد سمير",
+          labelAr: "القناة العامة",
+          descriptionAr: "محتوى عام وتربوي ومواعظ ودروس مناسبة للمشاهدة اليومية.",
+          status: "published",
+          verifiedAt: "2026-08-27",
+        },
+        {
+          id: "amgad-samir-scientific-youtube",
+          provider: "youtube",
+          channelId: "UCoFflcHXUS78RlNMQJDbNGw",
+          channelUrl: "https://www.youtube.com/channel/UCoFflcHXUS78RlNMQJDbNGw",
+          channelTitle: "أمجد سمير | القناة العلمية",
+          labelAr: "القناة العلمية",
+          descriptionAr: "سلاسل علمية طويلة وشرح كتب، تُرتب داخل سكينة كمسارات دراسة متتابعة.",
+          status: "published",
+          verifiedAt: "2026-08-27",
+        },
+      ],
+      series: [],
+    },
+  ],
 };
 
 export function getPublishedScholars() {

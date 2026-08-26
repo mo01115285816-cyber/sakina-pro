@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
   GraduationCap,
   LibraryBig,
   ListVideo,
@@ -312,13 +313,31 @@ export default function SakinaLibraryScreen({
 
           {view === "scholar" && selectedScholar && (
             <motion.div key="scholar" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="cut-crystal-panel rounded-[30px] p-5 sm:p-7">
-                <div className="flex items-center gap-4">
-                  <AvatarImage src={selectedScholar.photoUrl} alt={selectedScholar.displayName} fallback={selectedScholar.displayName.charAt(0)} large />
-                  <div className="min-w-0"><div className="mb-2 flex flex-wrap items-center gap-2"><span className="text-[11px] font-black text-[#b88a4f]">بورتفوليو الشيخ</span>{selectedScholar.verificationStatus === "verified" && <span className="flex items-center gap-1 rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px] font-black text-[#8a6a3d]"><ShieldCheck className="h-3 w-3" />{verifiedLabel(selectedScholar.verificationStatus)}</span>}</div><h1 className="truncate text-xl font-black sm:text-2xl">{selectedScholar.displayName}</h1><p className="mt-2 text-xs font-bold leading-6 text-[#7f6a55]">{selectedScholar.bioShort ?? "دروس وسلاسل تعليمية مرتبة داخل مكتبة سكينة."}</p></div>
+              <section className="cut-crystal-panel overflow-hidden rounded-[30px]">
+                <div className="relative overflow-hidden bg-[#2b1a10] px-5 pb-7 pt-6 text-center text-[#fdfcfb] sm:px-8">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(222,171,101,0.26),transparent_48%),linear-gradient(180deg,rgba(43,26,16,0.3),#2b1a10)]" aria-hidden="true" />
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="h-28 w-28 overflow-hidden rounded-[32px] border border-[#deab65]/60 bg-[#deab65]/15 p-1 shadow-[0_14px_36px_rgba(0,0,0,0.28)] sm:h-32 sm:w-32">
+                      <AvatarImage src={selectedScholar.photoUrl} alt={selectedScholar.displayName} fallback={selectedScholar.displayName.charAt(0)} large />
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-black text-[#f2d19b]"><span>بورتفوليو الشيخ</span><span className="text-[#fdfcfb]/45">·</span><span>مصر</span>{selectedScholar.verificationStatus === "verified" && <span className="inline-flex items-center gap-1 rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px] text-[#f7dfb4]"><ShieldCheck className="h-3 w-3" />{verifiedLabel(selectedScholar.verificationStatus)}</span>}</div>
+                    <h1 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">{selectedScholar.displayName}</h1>
+                    <p className="mt-3 max-w-2xl text-xs font-bold leading-6 text-[#fdfcfb]/70">{selectedScholar.bioShort ?? "دروس وسلاسل تعليمية مرتبة داخل مكتبة سكينة."}</p>
+                  </div>
                 </div>
               </section>
-              <section className="space-y-3"><h2 className="px-1 text-base font-black">السلاسل التعليمية</h2>{selectedScholar.series.length > 0 ? selectedScholar.series.map((series) => <SeriesCard key={series.id} series={series} onClick={() => openSeries(selectedScholar, series)} />) : <EmptyState compact title="لم تُنشر سلاسل لهذا الشيخ بعد" description="ستظهر السلاسل بعد مراجعة مصادرها واعتمادها." />}</section>
+              {selectedScholar.sources && selectedScholar.sources.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-base font-black">مصادر الشيخ</h2>
+                    <span className="text-xs font-bold text-[#7f6a55]">مصدران منفصلان</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {selectedScholar.sources.map((source) => <ScholarSourceCard key={source.id} source={source} />)}
+                  </div>
+                </section>
+              )}
+              <section className="space-y-3"><h2 className="px-1 text-base font-black">السلاسل التعليمية</h2>{selectedScholar.series.length > 0 ? selectedScholar.series.map((series) => <SeriesCard key={series.id} series={series} onClick={() => openSeries(selectedScholar, series)} />) : <EmptyState compact title="لم تُنشر سلاسل لهذا الشيخ بعد" description="تم تجهيز مصادر القنوات أولًا. ستظهر السلاسل بعد مراجعة روابط دروسها واعتمادها." />}</section>
             </motion.div>
           )}
 
@@ -349,11 +368,37 @@ function EmptyState({ title, description, compact = false }: { title: string; de
 }
 
 function AvatarImage({ src, alt, fallback, large = false }: { src?: string; alt: string; fallback: string; large?: boolean }) {
-  return src ? <img src={src} alt={alt} className={`${large ? "h-20 w-20" : "h-14 w-14"} shrink-0 rounded-full border border-[#deab65]/50 object-cover shadow-sm`} loading="eager" decoding="async" /> : <div className={`${large ? "h-20 w-20 text-3xl" : "h-14 w-14 text-xl"} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] font-black text-white shadow-sm`}>{fallback}</div>;
+  const sizeClass = large ? "h-full w-full rounded-[28px] text-3xl" : "h-14 w-14 rounded-full text-xl";
+  return src ? <img src={src} alt={alt} className={`${sizeClass} shrink-0 border border-[#deab65]/50 object-cover shadow-sm`} loading="eager" decoding="async" /> : <div className={`${sizeClass} flex shrink-0 items-center justify-center bg-gradient-to-br from-[#deab65] to-[#b88a4f] font-black text-white shadow-sm`}>{fallback}</div>;
 }
 
 function ScholarCard({ scholar, onClick }: { scholar: SakinaScholar; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="group flex w-full items-center justify-between gap-4 rounded-[26px] cut-crystal-panel p-4 text-right shadow-sm active:scale-[0.985] transition-transform"><div className="flex min-w-0 items-center gap-3"><AvatarImage src={scholar.photoUrl} alt={scholar.displayName} fallback={scholar.displayName.charAt(0)} /><div className="min-w-0"><h3 className="truncate text-base font-black group-hover:text-[#b88a4f]">{scholar.displayName}</h3><p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#7f6a55]"><ShieldCheck className="h-3.5 w-3.5 text-[#b88a4f]" />{verifiedLabel(scholar.verificationStatus)} · {scholar.series.length} سلسلة</p></div></div><ChevronLeft className="h-5 w-5 shrink-0 text-[#b88a4f]" /></button>;
+}
+
+function ScholarSourceCard({ source }: { source: NonNullable<SakinaScholar["sources"]>[number] }) {
+  const isScientific = source.id === "amgad-samir-scientific-youtube";
+  return (
+    <a
+      href={source.channelUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex min-h-[154px] flex-col justify-between rounded-[26px] cut-crystal-panel p-5 text-right shadow-sm transition-transform active:scale-[0.985]"
+    >
+      <div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 text-xs font-black text-[#b88a4f]"><Video className="h-4 w-4" />{source.labelAr}</span>
+          <ExternalLink className="h-4 w-4 text-[#b88a4f] transition-transform group-hover:-translate-x-0.5" />
+        </div>
+        <h3 className="text-base font-black leading-7">{source.channelTitle}</h3>
+        <p className="mt-2 text-xs font-bold leading-6 text-[#7f6a55]">{source.descriptionAr}</p>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] font-black text-[#7f6a55]">
+        <span className="cut-crystal-capsule px-3 py-1.5">{isScientific ? "سلاسل علمية طويلة" : "محتوى عام"}</span>
+        <span className="text-[#b88a4f]">فتح القناة</span>
+      </div>
+    </a>
+  );
 }
 
 function SeriesCard({ series, onClick }: { series: SakinaLessonSeries; onClick: () => void }) {
