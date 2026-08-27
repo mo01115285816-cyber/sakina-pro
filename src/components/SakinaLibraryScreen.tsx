@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { getPublishedScholars } from "@/data/sakinaLibraryCatalog";
+import { loadPublishedSakinaScholars } from "@/services/sakina-library-storage";
 import type {
   SakinaLessonItem,
   SakinaLessonSeries,
@@ -71,7 +72,7 @@ export default function SakinaLibraryScreen({
   onBack,
   onHideNavChange,
 }: SakinaLibraryScreenProps) {
-  const scholars = useMemo(() => getPublishedScholars(), []);
+  const [scholars, setScholars] = useState<SakinaScholar[]>(() => getPublishedScholars());
   const [view, setView] = useState<LibraryView>("library");
   const [selectedScholarId, setSelectedScholarId] = useState<string | null>(null);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
@@ -79,6 +80,12 @@ export default function SakinaLibraryScreen({
   const [query, setQuery] = useState("");
   const [savedLessonIds, setSavedLessonIds] = useState<Set<string>>(() => readStringSet(SAVED_LESSONS_KEY));
   const [progress, setProgress] = useState<Record<string, number>>(() => readProgress());
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadPublishedSakinaScholars(controller.signal).then(setScholars);
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     onHideNavChange?.(view !== "library");
@@ -342,7 +349,7 @@ export default function SakinaLibraryScreen({
           {view === "series" && selectedScholar && selectedSeries && (
             <motion.div key="series" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
               <section className="cut-crystal-panel rounded-[30px] p-5 sm:p-7"><div className="flex items-start justify-between gap-4"><div><span className="text-xs font-black text-[#b88a4f]">{selectedScholar.displayName}</span><h1 className="mt-2 text-2xl font-black">{selectedSeries.titleAr}</h1><p className="mt-2 text-sm font-bold leading-7 text-[#7f6a55]">{selectedSeries.description ?? "سلسلة مرتبة لمتابعة الدروس خطوة بخطوة."}</p></div><ListVideo className="h-8 w-8 shrink-0 text-[#b88a4f]" /></div><div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-[#7f6a55]"><span className="cut-crystal-capsule px-3 py-2">{selectedSeries.lessons.length} درس</span>{selectedSeries.category && <span className="cut-crystal-capsule px-3 py-2">{selectedSeries.category}</span>}</div></section>
-              <section className="space-y-3">{selectedSeries.lessons.length > 0 ? selectedSeries.lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => <LessonRow key={lesson.id} lesson={lesson} progress={progress[lesson.id] ?? 0} saved={savedLessonIds.has(lesson.id)} onToggleSaved={() => toggleSaved(lesson.id)} onClick={() => openLesson(selectedScholar, selectedSeries, lesson)} />) : <EmptyState compact title="السلسلة قيد التجهيز" description="ستظهر الدروس بعد اعتماد روابطها الرسمية." />}</section>
+              <section className="space-y-3">{selectedSeries.lessons.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{selectedSeries.lessons.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => <LessonVideoCard key={lesson.id} lesson={lesson} progress={progress[lesson.id] ?? 0} saved={savedLessonIds.has(lesson.id)} onToggleSaved={() => toggleSaved(lesson.id)} onClick={() => openLesson(selectedScholar, selectedSeries, lesson)} />)}</div> : <EmptyState compact title="السلسلة قيد التجهيز" description="ستظهر الدروس بعد اعتماد روابطها الرسمية." />}</section>
             </motion.div>
           )}
 
@@ -381,18 +388,18 @@ function ScholarSourceCard({ source }: { source: NonNullable<SakinaScholar["sour
       href={source.channelUrl}
       target="_blank"
       rel="noreferrer"
-      className="group flex min-h-[154px] flex-col justify-between rounded-[26px] cut-crystal-panel p-5 text-right shadow-sm transition-transform active:scale-[0.985]"
+      className="group flex min-h-[112px] flex-col justify-between rounded-[22px] cut-crystal-panel p-3.5 text-right shadow-sm transition-transform active:scale-[0.985]"
     >
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 text-xs font-black text-[#b88a4f]"><Video className="h-4 w-4" />{source.labelAr}</span>
-          <ExternalLink className="h-4 w-4 text-[#b88a4f] transition-transform group-hover:-translate-x-0.5" />
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-[#b88a4f]"><Video className="h-3.5 w-3.5" />{source.labelAr}</span>
+          <ExternalLink className="h-3.5 w-3.5 text-[#b88a4f] transition-transform group-hover:-translate-x-0.5" />
         </div>
-        <h3 className="text-base font-black leading-7">{source.channelTitle}</h3>
-        <p className="mt-2 text-xs font-bold leading-6 text-[#7f6a55]">{source.descriptionAr}</p>
+        <h3 className="text-sm font-black leading-6">{source.channelTitle}</h3>
+        <p className="mt-1 text-[11px] font-bold leading-5 text-[#7f6a55]">{source.descriptionAr}</p>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] font-black text-[#7f6a55]">
-        <span className="cut-crystal-capsule px-3 py-1.5">{isScientific ? "سلاسل علمية طويلة" : "محتوى عام"}</span>
+      <div className="mt-3 flex items-center justify-between gap-2 text-[10px] font-black text-[#7f6a55]">
+        <span className="cut-crystal-capsule px-2 py-1">{isScientific ? "سلاسل علمية طويلة" : "محتوى عام"}</span>
         <span className="text-[#b88a4f]">فتح القناة</span>
       </div>
     </a>
@@ -401,6 +408,30 @@ function ScholarSourceCard({ source }: { source: NonNullable<SakinaScholar["sour
 
 function SeriesCard({ series, onClick }: { series: SakinaLessonSeries; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-4 rounded-[26px] cut-crystal-panel p-5 text-right shadow-sm active:scale-[0.985] transition-transform"><div><div className="mb-2 flex items-center gap-2 text-xs font-black text-[#b88a4f]"><ListVideo className="h-4 w-4" />سلسلة تعليمية</div><h3 className="text-lg font-black">{series.titleAr}</h3><p className="mt-1 text-sm font-bold leading-6 text-[#7f6a55]">{series.description ?? "سلسلة مرتبة داخل مكتبة سكينة."}</p><span className="mt-3 inline-flex cut-crystal-capsule px-3 py-1.5 text-xs font-bold text-[#7f6a55]">{series.lessons.length} درس</span></div><ChevronLeft className="h-5 w-5 shrink-0 text-[#b88a4f]" /></button>;
+}
+
+function LessonVideoCard({ lesson, progress, saved, onToggleSaved, onClick }: { lesson: SakinaLessonItem; progress: number; saved: boolean; onToggleSaved: () => void; onClick: () => void }) {
+  return (
+    <article className="overflow-hidden rounded-[24px] cut-crystal-panel shadow-sm">
+      <button type="button" onClick={onClick} className="group block w-full text-right">
+        <div className="relative aspect-video overflow-hidden bg-[#2b1a10]">
+          {lesson.thumbnailUrl ? <img src={lesson.thumbnailUrl} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.025]" loading="lazy" decoding="async" /> : <div className="flex h-full items-center justify-center text-[#deab65]"><Video className="h-9 w-9" /></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#2b1a10]/75 via-transparent to-[#2b1a10]/10" aria-hidden="true" />
+          <span className="absolute right-2 top-2 rounded-full bg-[#2b1a10]/75 px-2 py-1 text-[10px] font-black text-[#fdfcfb] backdrop-blur-sm">{lesson.episodeNumber ? `الحلقة ${lesson.episodeNumber}` : "درس"}</span>
+          <span className="absolute bottom-2 left-2 rounded-full bg-[#2b1a10]/80 px-2 py-1 text-[10px] font-black text-[#fdfcfb] backdrop-blur-sm">{formatDuration(lesson.durationSeconds)}</span>
+          <span className="absolute inset-0 flex items-center justify-center"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#deab65] text-[#2b1a10] shadow-lg transition-transform duration-150 group-hover:scale-105"><Play className="h-4 w-4 fill-current" /></span></span>
+        </div>
+        <div className="p-3.5 pb-2">
+          <h3 className="min-h-[3rem] text-sm font-black leading-6">{lesson.titleAr}</h3>
+          {progress > 0 && <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#2b1a10]/10"><div className="h-full rounded-full bg-[#b88a4f]" style={{ width: `${Math.min(100, progress)}%` }} /></div>}
+        </div>
+      </button>
+      <div className="flex items-center justify-between px-3.5 pb-3 text-[10px] font-bold text-[#7f6a55]">
+        <span>{progress >= 100 ? "مكتمل" : progress > 0 ? `${progress}% مكتمل` : "جاهز للمشاهدة"}</span>
+        <button type="button" onClick={onToggleSaved} className="flex h-8 w-8 items-center justify-center cut-crystal-capsule text-[#b88a4f]" aria-label={saved ? "إلغاء حفظ الدرس" : "حفظ الدرس"}>{saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}</button>
+      </div>
+    </article>
+  );
 }
 
 function LessonRow({ lesson, progress, saved, onToggleSaved, onClick }: { lesson: SakinaLessonItem; progress: number; saved: boolean; onToggleSaved: () => void; onClick: () => void }) {
