@@ -198,6 +198,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .map((item) => ({
           id: item.id,
           scholarId: item.scholar_id,
+          sourceId: item.source_id ?? undefined,
           titleAr: item.title_ar,
           description: item.description_ar ?? undefined,
           category: item.category ?? undefined,

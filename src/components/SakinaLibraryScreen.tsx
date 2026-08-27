@@ -38,6 +38,8 @@ type LibraryView = "library" | "scholar" | "series" | "lesson" | "saved";
 
 const SAVED_LESSONS_KEY = "sakeenah_lesson_bookmarks_v1";
 const PROGRESS_KEY = "sakeenah_lesson_progress_v1";
+const SCHOLAR_INTRO_STORAGE_KEY = "sakeenah_amgad_samir_profile_intro_v1";
+const AMGAD_GENERAL_SOURCE_ID = "amgad-samir-general-youtube";
 
 function readStringSet(key: string) {
   try {
@@ -80,6 +82,9 @@ export default function SakinaLibraryScreen({
   const [query, setQuery] = useState("");
   const [savedLessonIds, setSavedLessonIds] = useState<Set<string>>(() => readStringSet(SAVED_LESSONS_KEY));
   const [progress, setProgress] = useState<Record<string, number>>(() => readProgress());
+  const [activeSourceId, setActiveSourceId] = useState(AMGAD_GENERAL_SOURCE_ID);
+  const [showScholarIntro, setShowScholarIntro] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -91,6 +96,26 @@ export default function SakinaLibraryScreen({
     onHideNavChange?.(view !== "library");
     return () => onHideNavChange?.(false);
   }, [onHideNavChange, view]);
+
+  useEffect(() => {
+    if (view !== "scholar" || selectedScholarId !== "amgad-samir") {
+      setShowScholarIntro(false);
+      setIntroReady(false);
+      return;
+    }
+    try {
+      setShowScholarIntro(localStorage.getItem(SCHOLAR_INTRO_STORAGE_KEY) !== "true");
+    } catch {
+      setShowScholarIntro(true);
+    }
+  }, [selectedScholarId, view]);
+
+  useEffect(() => {
+    if (!showScholarIntro) return;
+    setIntroReady(false);
+    const timer = window.setTimeout(() => setIntroReady(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, [showScholarIntro]);
 
   const selectedScholar = useMemo(
     () => scholars.find((scholar) => scholar.id === selectedScholarId) ?? null,
@@ -105,6 +130,16 @@ export default function SakinaLibraryScreen({
   const selectedLesson = useMemo(
     () => selectedSeries?.lessons.find((lesson) => lesson.id === selectedLessonId) ?? null,
     [selectedSeries, selectedLessonId],
+  );
+
+  const selectedSource = useMemo(
+    () => selectedScholar?.sources?.find((source) => source.id === activeSourceId) ?? selectedScholar?.sources?.[0] ?? null,
+    [activeSourceId, selectedScholar],
+  );
+
+  const visibleSeries = useMemo(
+    () => selectedScholar?.series.filter((series) => !selectedSource || series.sourceId === selectedSource.id) ?? [],
+    [selectedScholar, selectedSource],
   );
 
   const searchResults = useMemo(() => {
@@ -143,6 +178,7 @@ export default function SakinaLibraryScreen({
 
   const openScholar = (scholar: SakinaScholar) => {
     setSelectedScholarId(scholar.id);
+    setActiveSourceId(scholar.sources?.find((source) => source.id === AMGAD_GENERAL_SOURCE_ID)?.id ?? scholar.sources?.[0]?.id ?? AMGAD_GENERAL_SOURCE_ID);
     setSelectedSeriesId(null);
     setSelectedLessonId(null);
     setView("scholar");
@@ -332,17 +368,47 @@ export default function SakinaLibraryScreen({
                 </div>
               </section>
               {selectedScholar.sources && selectedScholar.sources.length > 0 && (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <h2 className="text-base font-black">مصادر الشيخ</h2>
-                    <span className="text-xs font-bold text-[#7f6a55]">مصدران منفصلان</span>
+                <nav className="flex justify-center" aria-label="مصادر الشيخ">
+                  <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-[32px] cut-crystal-capsule px-1.5 py-1.5 shadow-lg">
+                    {selectedScholar.sources.map((source) => {
+                      const isActive = selectedSource?.id === source.id;
+                      return (
+                        <button
+                          key={source.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveSourceId(source.id);
+                            setSelectedSeriesId(null);
+                            setSelectedLessonId(null);
+                            setView("scholar");
+                          }}
+                          className={`relative flex shrink-0 items-center gap-2 rounded-[24px] px-4 py-2 transition-colors duration-200 ${isActive ? "text-[#2b1a10]" : "text-[#7f6a55] hover:bg-[#2b1a10]/5"}`}
+                        >
+                          {isActive && <motion.div layoutId="amgadSourceIndicator" className="absolute inset-0 rounded-[24px] bg-[#2b1a10]/10 shadow-inner" transition={{ type: "spring", stiffness: 400, damping: 30 }} />}
+                          <span className="relative z-10 flex items-center justify-center"><Video className="h-4 w-4" /></span>
+                          <span className="relative z-10 whitespace-nowrap text-xs font-bold">{source.labelAr}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {selectedScholar.sources.map((source) => <ScholarSourceCard key={source.id} source={source} />)}
-                  </div>
-                </section>
+                </nav>
               )}
-              <section className="space-y-3"><h2 className="px-1 text-base font-black">السلاسل التعليمية</h2>{selectedScholar.series.length > 0 ? selectedScholar.series.map((series) => <SeriesCard key={series.id} series={series} onClick={() => openSeries(selectedScholar, series)} />) : <EmptyState compact title="لم تُنشر سلاسل لهذا الشيخ بعد" description="تم تجهيز مصادر القنوات أولًا. ستظهر السلاسل بعد مراجعة روابط دروسها واعتمادها." />}</section>
+              <section className="space-y-3">
+                <div className="flex items-center justify-between px-1"><h2 className="text-base font-black">{selectedSource?.labelAr ?? "السلاسل التعليمية"}</h2><span className="text-xs font-bold text-[#7f6a55]">{visibleSeries.length} سلاسل</span></div>
+                {visibleSeries.length > 0 ? visibleSeries.map((series) => <SeriesCard key={series.id} series={series} onClick={() => openSeries(selectedScholar, series)} />) : <EmptyState compact title="السلاسل قيد التجهيز" description="لا توجد سلاسل منشورة لهذا المصدر حتى الآن." />}
+              </section>
+              {showScholarIntro && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b1a10]/35 px-4 py-8 backdrop-blur-sm">
+                  <motion.section initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md cut-crystal-panel rounded-[30px] p-5 shadow-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="amgad-profile-intro-title">
+                    <div className="mb-5 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#deab65]/15 text-[#b88a4f]"><LibraryBig className="h-6 w-6" /></div><h2 id="amgad-profile-intro-title" className="text-xl font-black">دليل بورتفوليو الشيخ</h2><p className="mt-2 text-sm font-bold leading-6 text-[#7f6a55]">هنا هتلاقي محتوى أمجد سمير مرتب حسب كل قناة.</p></div>
+                    <div className="space-y-2.5">
+                      <div className="cut-crystal-panel rounded-[22px] p-3.5"><div className="flex items-center gap-2 text-sm font-black text-[#b88a4f]"><Video className="h-4 w-4" />القناة العامة</div><p className="mt-1.5 text-xs font-bold leading-6 text-[#7f6a55]">مواعظ ودروس ومحتوى تربوي عام للمشاهدة اليومية.</p></div>
+                      <div className="cut-crystal-panel rounded-[22px] p-3.5"><div className="flex items-center gap-2 text-sm font-black text-[#b88a4f]"><GraduationCap className="h-4 w-4" />القناة العلمية</div><p className="mt-1.5 text-xs font-bold leading-6 text-[#7f6a55]">سلاسل علمية طويلة وشروح مرتبة للدراسة المتتابعة.</p></div>
+                    </div>
+                    <button type="button" disabled={!introReady} onClick={() => { try { localStorage.setItem(SCHOLAR_INTRO_STORAGE_KEY, "true"); } catch { /* Storage is optional. */ } setShowScholarIntro(false); }} className="mt-5 w-full cut-crystal-capsule-gold px-4 py-3 text-sm font-black transition-opacity disabled:cursor-not-allowed disabled:opacity-45">{introReady ? "فهمت" : "اقرأ التعريف أولًا"}</button>
+                  </motion.section>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -407,7 +473,7 @@ function ScholarSourceCard({ source }: { source: NonNullable<SakinaScholar["sour
 }
 
 function SeriesCard({ series, onClick }: { series: SakinaLessonSeries; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-4 rounded-[26px] cut-crystal-panel p-5 text-right shadow-sm active:scale-[0.985] transition-transform"><div><div className="mb-2 flex items-center gap-2 text-xs font-black text-[#b88a4f]"><ListVideo className="h-4 w-4" />سلسلة تعليمية</div><h3 className="text-lg font-black">{series.titleAr}</h3><p className="mt-1 text-sm font-bold leading-6 text-[#7f6a55]">{series.description ?? "سلسلة مرتبة داخل مكتبة سكينة."}</p><span className="mt-3 inline-flex cut-crystal-capsule px-3 py-1.5 text-xs font-bold text-[#7f6a55]">{series.lessons.length} درس</span></div><ChevronLeft className="h-5 w-5 shrink-0 text-[#b88a4f]" /></button>;
+  return <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-3 rounded-[22px] cut-crystal-panel p-3.5 text-right shadow-sm active:scale-[0.985] transition-transform"><div className="min-w-0"><div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-black text-[#b88a4f]"><ListVideo className="h-3.5 w-3.5" />سلسلة تعليمية</div><h3 className="truncate text-sm font-black">{series.titleAr}</h3><p className="mt-1 max-h-10 overflow-hidden text-[11px] font-bold leading-5 text-[#7f6a55]">{series.description ?? "سلسلة مرتبة داخل مكتبة سكينة."}</p><span className="mt-2 inline-flex cut-crystal-capsule px-2 py-1 text-[10px] font-bold text-[#7f6a55]">{series.lessons.length} درس</span></div><ChevronLeft className="h-4 w-4 shrink-0 text-[#b88a4f]" /></button>;
 }
 
 function LessonVideoCard({ lesson, progress, saved, onToggleSaved, onClick }: { lesson: SakinaLessonItem; progress: number; saved: boolean; onToggleSaved: () => void; onClick: () => void }) {

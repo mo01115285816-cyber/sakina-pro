@@ -45,6 +45,7 @@ export interface SakinaLessonItem {
 export interface SakinaLessonSeries {
   id: string;
   scholarId: string;
+  sourceId?: string;
   titleAr: string;
   description?: string;
   category?: string;
