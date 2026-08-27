@@ -1396,6 +1396,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
                           {/* Multi-layered Vignette & Contrast Gradients for text legibility with high illustration clarity */}
                           <div className="absolute inset-0 bg-gradient-to-t from-[#1a0f0a]/85 via-[#1a0f0a]/45 to-[#1a0f0a]/25 z-1" />
                           <div className="absolute inset-0 border border-[#deab65]/25 rounded-[26px] pointer-events-none z-2" />
+                          <div className="pointer-events-none absolute inset-3 z-[3] rounded-[24px] border border-[#f7dfb4]/15 bg-[#2b1a10]/28 backdrop-blur-[2px]" />
                         </>
                       )}
 
