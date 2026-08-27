@@ -55,6 +55,13 @@ type LessonRow = {
   sort_order: number;
 };
 
+type SeriesMembershipRow = {
+  series_id: string;
+  lesson_id: string;
+  series_lesson_number: number;
+  sort_order: number;
+};
+
 function json(res: ServerResponse, status: number, body: unknown) {
   const payload = JSON.stringify(body);
   res.statusCode = status;
@@ -157,6 +164,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     const series = (seriesResult.data ?? []) as SeriesRow[];
     const sources = (sourcesResult.data ?? []) as SourceRow[];
+    const seriesIds = series.map((row) => row.id);
+    const membershipsResult = seriesIds.length > 0
+      ? await supabase
+        .from("lesson_series_items")
+        .select("series_id,lesson_id,series_lesson_number,sort_order")
+        .in("series_id", seriesIds)
+        .order("sort_order", { ascending: true })
+        .limit(5000)
+      : { data: [], error: null };
+    if (membershipsResult.error) throw membershipsResult.error;
+
     const sourceIds = sources.map((row) => row.id);
     const lessonsResult = sourceIds.length > 0
       ? await supabase
@@ -171,6 +189,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (lessonsResult.error) throw lessonsResult.error;
 
     const lessons = (lessonsResult.data ?? []) as LessonRow[];
+    const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+    const membershipsBySeries = new Map<string, SeriesMembershipRow[]>();
+    for (const membership of (membershipsResult.data ?? []) as SeriesMembershipRow[]) {
+      const current = membershipsBySeries.get(membership.series_id) ?? [];
+      current.push(membership);
+      membershipsBySeries.set(membership.series_id, current);
+    }
     const mapLesson = (lesson: LessonRow, scholarId: string) => ({
       id: lesson.id,
       seriesId: lesson.series_id ?? undefined,
@@ -226,9 +251,28 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           coverUrl: item.cover_url ?? undefined,
           sortOrder: item.sort_order,
           status: "published" as const,
-          lessons: lessons
-            .filter((lesson) => lesson.series_id === item.id)
-            .map((lesson) => mapLesson(lesson, scholar.id)),
+          lessons: (() => {
+            const seriesMemberships = membershipsBySeries.get(item.id);
+            if (!seriesMemberships || seriesMemberships.length === 0) {
+              return lessons
+                .filter((lesson) => lesson.series_id === item.id)
+                .map((lesson) => mapLesson(lesson, scholar.id));
+            }
+            return seriesMemberships
+              .slice()
+              .sort((a, b) => a.sort_order - b.sort_order || a.series_lesson_number - b.series_lesson_number)
+              .map((membership) => {
+                const lesson = lessonsById.get(membership.lesson_id);
+                if (!lesson) return null;
+                return mapLesson({
+                  ...lesson,
+                  series_id: item.id,
+                  lesson_number: membership.series_lesson_number,
+                  sort_order: membership.sort_order,
+                }, scholar.id);
+              })
+              .filter((lesson): lesson is NonNullable<typeof lesson> => lesson !== null);
+          })(),
         })),
       standaloneLessons: lessons
         .filter((lesson) => lesson.series_id === null && sources.some((source) => source.id === lesson.source_id && source.scholar_id === scholar.id))

@@ -40,7 +40,7 @@ type SeriesRow = {
   sort_order: number;
 };
 
-const LIBRARY_CACHE_KEY = "sakeenah_lesson_library_cache_v2";
+const LIBRARY_CACHE_KEY = "sakeenah_lesson_library_cache_v3";
 const LIBRARY_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 type LibraryCache = { savedAt: number; scholars: SakinaScholar[] };
@@ -59,13 +59,28 @@ type LessonRow = {
   sort_order: number;
 };
 
+type SeriesMembershipRow = {
+  series_id: string;
+  lesson_id: string;
+  series_lesson_number: number;
+  sort_order: number;
+};
+
 function mapCatalog(
   scholars: ScholarRow[],
   sources: SourceRow[],
   series: SeriesRow[],
   lessons: LessonRow[],
+  memberships: SeriesMembershipRow[],
 ): SakinaScholar[] {
   const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const lessonsById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const membershipsBySeries = new Map<string, SeriesMembershipRow[]>();
+  for (const membership of memberships) {
+    const current = membershipsBySeries.get(membership.series_id) ?? [];
+    current.push(membership);
+    membershipsBySeries.set(membership.series_id, current);
+  }
   const mapLesson = (lesson: LessonRow, scholar: ScholarRow): SakinaLessonItem => {
     const source = sourceById.get(lesson.source_id);
     return {
@@ -124,9 +139,28 @@ function mapCatalog(
         coverUrl: item.cover_url ?? undefined,
         sortOrder: item.sort_order,
         status: "published",
-        lessons: lessons
-          .filter((lesson) => lesson.series_id === item.id)
-          .map((lesson) => mapLesson(lesson, scholar)),
+        lessons: (() => {
+          const seriesMemberships = membershipsBySeries.get(item.id);
+          if (!seriesMemberships || seriesMemberships.length === 0) {
+            return lessons
+              .filter((lesson) => lesson.series_id === item.id)
+              .map((lesson) => mapLesson(lesson, scholar));
+          }
+          return seriesMemberships
+            .slice()
+            .sort((a, b) => a.sort_order - b.sort_order || a.series_lesson_number - b.series_lesson_number)
+            .map((membership) => {
+              const lesson = lessonsById.get(membership.lesson_id);
+              if (!lesson) return null;
+              return mapLesson({
+                ...lesson,
+                series_id: item.id,
+                lesson_number: membership.series_lesson_number,
+                sort_order: membership.sort_order,
+              }, scholar);
+            })
+            .filter((lesson): lesson is SakinaLessonItem => lesson !== null);
+        })(),
       })),
     standaloneLessons: lessons
       .filter((lesson) => lesson.series_id === null && sourceById.get(lesson.source_id)?.scholar_id === scholar.id)
@@ -172,6 +206,18 @@ async function loadFromSupabase(signal?: AbortSignal) {
   if (seriesResult.error) throw seriesResult.error;
 
   const series = (seriesResult.data ?? []) as SeriesRow[];
+  const seriesIds = series.map((row) => row.id);
+  const membershipsResult = seriesIds.length > 0
+    ? await client
+      .from("lesson_series_items")
+      .select("series_id,lesson_id,series_lesson_number,sort_order")
+      .in("series_id", seriesIds)
+      .order("sort_order", { ascending: true })
+      .limit(5000)
+      .abortSignal(signal ?? new AbortController().signal)
+    : { data: [], error: null };
+  if (membershipsResult.error) throw membershipsResult.error;
+
   const sourceIds = (sourcesResult.data ?? []).map((row) => (row as SourceRow).id);
   const lessonsResult = sourceIds.length > 0
     ? await client
@@ -186,7 +232,13 @@ async function loadFromSupabase(signal?: AbortSignal) {
     : { data: [], error: null };
   if (lessonsResult.error) throw lessonsResult.error;
 
-  return mapCatalog(scholars, (sourcesResult.data ?? []) as SourceRow[], series, (lessonsResult.data ?? []) as LessonRow[]);
+  return mapCatalog(
+    scholars,
+    (sourcesResult.data ?? []) as SourceRow[],
+    series,
+    (lessonsResult.data ?? []) as LessonRow[],
+    (membershipsResult.data ?? []) as SeriesMembershipRow[],
+  );
 }
 
 /**
