@@ -40,7 +40,7 @@ type SeriesRow = {
   sort_order: number;
 };
 
-const LIBRARY_CACHE_KEY = "sakeenah_lesson_library_cache_v3";
+const LIBRARY_CACHE_KEY = "sakeenah_lesson_library_cache_v4";
 const LIBRARY_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 type LibraryCache = { savedAt: number; scholars: SakinaScholar[] };
