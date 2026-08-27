@@ -1068,7 +1068,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
                 type="button"
                 onClick={onOpenSakinaLibrary}
                 whileTap={{ scale: 0.985 }}
-                className="group relative isolate flex min-h-[142px] w-full items-end justify-between gap-4 overflow-hidden rounded-[28px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-right text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)] transition-transform active:scale-[0.99] sm:min-h-[156px] sm:p-5"
+                className="group relative isolate flex min-h-[142px] w-full items-end justify-between gap-4 overflow-hidden rounded-[28px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-right text-[#fdfcfb] shadow-[var(--glass-ambient)] transition-transform active:scale-[0.99] sm:min-h-[156px] sm:p-5"
                 style={{
                   backgroundImage: `linear-gradient(270deg, rgba(43,26,16,0.9) 0%, rgba(43,26,16,0.62) 54%, rgba(43,26,16,0.2) 100%), url(${SAKINA_LIBRARY_GATE_IMAGE})`,
                   backgroundPosition: "center",

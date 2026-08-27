@@ -283,7 +283,9 @@ export default function QuranPureRecitationsScreen({
                         className="w-full rounded-[28px] p-4.5 flex items-center justify-between group active:scale-[0.98] transition-all duration-200 shadow-md text-right cut-crystal-panel"
                       >
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white flex items-center justify-center shadow-sm border border-[#c49a62]">
+                          <div className="relative w-12 h-12 shrink-0 rounded-full cut-crystal-panel p-1 text-white">
+                            <div className="relative h-full w-full overflow-hidden rounded-full bg-gradient-to-br from-[#deab65] to-[#b88a4f] flex items-center justify-center">
+
                             {imageUrl ? (
                               <img
                                 src={imageUrl}
@@ -297,6 +299,7 @@ export default function QuranPureRecitationsScreen({
                             ) : (
                               <span className="text-[20px] font-bold font-serif">{reciter.name.trim().charAt(0)}</span>
                             )}
+                            </div>
                           </div>
                           <div className="min-w-0">
                             <h3 className="text-[17px] font-bold leading-tight mb-1.5 truncate text-[#2b1a10] group-hover:text-[#b88a4f]">

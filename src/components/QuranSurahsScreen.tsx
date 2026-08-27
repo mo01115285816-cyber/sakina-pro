@@ -151,7 +151,8 @@ export default function QuranSurahsScreen({
         {/* Reciter Info Area */}
         <div className="px-6 pb-6 flex items-center gap-4 z-10 relative">
           {/* Art thumbnail - premium gold gradient */}
-          <div className="w-[72px] h-[72px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-white rounded-[24px] shrink-0 shadow-[0_8px_24px_rgba(184,138,79,0.2)] flex items-center justify-center text-[26px] font-bold font-serif border border-[#c49a62] overflow-hidden">
+          <div className="relative w-[72px] h-[72px] rounded-[24px] shrink-0 cut-crystal-panel p-1 text-white">
+            <div className="relative h-full w-full overflow-hidden rounded-[20px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] flex items-center justify-center text-[26px] font-bold font-serif">
             {reciter.photoUrl || reciter.photo ? (
               <img
                 src={reciter.photoUrl || reciter.photo}
@@ -163,6 +164,7 @@ export default function QuranSurahsScreen({
                 className="w-full h-full object-cover"
               />
             ) : reciter.name.trim().charAt(0)}
+            </div>
           </div>
           <div className="text-right flex-1">
             <h2 className="text-[22px] font-bold text-[#2b1a10] leading-tight mb-1">

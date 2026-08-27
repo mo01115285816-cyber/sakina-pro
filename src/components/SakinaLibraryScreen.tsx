@@ -336,11 +336,12 @@ export default function SakinaLibraryScreen({
           {view === "library" && (
             <motion.div key="library" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
               <section
-                className="cut-crystal-panel relative min-h-[196px] overflow-hidden rounded-[30px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)] sm:min-h-[214px] sm:p-5"
+                className="cut-crystal-panel relative min-h-[196px] overflow-hidden rounded-[30px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-[#fdfcfb] shadow-[var(--glass-ambient)] sm:min-h-[214px] sm:p-5"
                 style={{
                   backgroundImage: `linear-gradient(270deg, rgba(43,26,16,0.88) 0%, rgba(43,26,16,0.58) 52%, rgba(43,26,16,0.22) 100%), url(${SAKINA_LIBRARY_HERO_IMAGE})`,
                   backgroundPosition: "center",
                   backgroundSize: "cover",
+                  boxShadow: "var(--glass-ambient)",
                 }}
               >
                 <div className="relative z-10 max-w-xl rounded-[24px] border border-[#f7dfb4]/15 bg-[#2b1a10]/28 p-3 backdrop-blur-[2px] sm:p-4">
@@ -351,9 +352,9 @@ export default function SakinaLibraryScreen({
                   <h1 className="text-[23px] font-black leading-tight sm:text-[28px]">تعلم بهدوء، من مصادر موثوقة</h1>
                   <p className="mt-2 max-w-xl text-xs font-bold leading-6 text-[#fdfcfb]/78">دروس ومحاضرات مرتبة داخل مكتبة سكينة، من الشيخ إلى السلسلة ثم الدرس، بلا تشتت ولا نتائج عشوائية.</p>
                   <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-bold text-[#f7dfb4]">
-                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">ترشيح ومراجعة</span>
-                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">متابعة من حيث توقفت</span>
-                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">مشغل رسمي</span>
+                    <span className="cut-crystal-capsule-dark px-2.5 py-1.5 text-[#f7dfb4]">ترشيح ومراجعة</span>
+                    <span className="cut-crystal-capsule-dark px-2.5 py-1.5 text-[#f7dfb4]">متابعة من حيث توقفت</span>
+                    <span className="cut-crystal-capsule-dark px-2.5 py-1.5 text-[#f7dfb4]">مشغل رسمي</span>
                   </div>
                 </div>
               </section>
