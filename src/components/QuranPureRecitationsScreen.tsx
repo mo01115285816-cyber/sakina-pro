@@ -10,7 +10,7 @@ const CATALOG_URL =
 
 const RECITER_IMAGE_PATHS: Record<string, string> = {
   "mohammed-siddiq-al-minshawi": publicAssetUrl(
-    "images/quran-recitation/mohammed-siddiq-al-minshawi.jpg",
+    "images/quran-recitation/mohammed-siddiq-al-minshawi.webp",
   ),
   "ahmed-bin-taleb": publicAssetUrl(
     "images/quran-recitation/ahmed-bin-taleb.jpg",
