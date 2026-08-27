@@ -57,6 +57,7 @@ const BOOKMARKS_STORAGE_KEY = "sakeenah_hadith_bookmarks_v1";
 const LAST_READ_STORAGE_KEY = "sakeenah_hadith_last_read_v1";
 const REPORTS_STORAGE_KEY = "sakeenah_hadith_reports_v1";
 const DISCLAIMER_STORAGE_KEY = "sakeenah_hadith_disclaimer_dismissed_v1";
+const SAKINA_LIBRARY_GATE_IMAGE = "/images/sakina-library/sakina-library-gate.webp";
 
 async function readHadithJson<T>(response: Response): Promise<T> {
   const body = await response.text();
@@ -1067,22 +1068,22 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
                 type="button"
                 onClick={onOpenSakinaLibrary}
                 whileTap={{ scale: 0.985 }}
-                className="group flex w-full items-center justify-between gap-4 rounded-[28px] cut-crystal-panel p-5 text-right shadow-sm transition-colors hover:bg-[#2b1a10]/[0.03]"
+                className="group relative isolate flex min-h-[142px] w-full items-end justify-between gap-4 overflow-hidden rounded-[28px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-right text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)] transition-transform active:scale-[0.99] sm:min-h-[156px] sm:p-5"
+                style={{
+                  backgroundImage: `linear-gradient(270deg, rgba(43,26,16,0.9) 0%, rgba(43,26,16,0.62) 54%, rgba(43,26,16,0.2) 100%), url(${SAKINA_LIBRARY_GATE_IMAGE})`,
+                  backgroundPosition: "center",
+                  backgroundSize: "cover",
+                }}
               >
-                <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-[#2b1a10] text-[#deab65] shadow-sm">
-                    <BookText className="h-7 w-7" />
+                <div className="relative z-10 min-w-0 max-w-[84%] rounded-[22px] border border-[#f7dfb4]/15 bg-[#2b1a10]/28 p-3 backdrop-blur-[2px] sm:p-3.5">
+                  <div className="mb-1.5 flex items-center gap-2 text-[10px] font-black text-[#f7dfb4]">
+                    <span>مكتبة سكينة</span>
+                    <span className="rounded-full border border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2 py-1 text-[9px]">قسم جديد</span>
                   </div>
-                  <div className="min-w-0">
-                    <div className="mb-1 flex items-center gap-2 text-[11px] font-black text-[#b88a4f]">
-                      <span>مكتبة سكينة</span>
-                      <span className="rounded-full bg-[#deab65]/20 px-2 py-1 text-[10px]">قسم جديد</span>
-                    </div>
-                    <h2 className="truncate text-base font-black text-[#2b1a10]">الدروس والمحاضرات</h2>
-                    <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#7f6a55]">دروس مرتبة من الشيخ إلى السلسلة ثم الدرس، من مصادر يتم اعتمادها ومراجعتها.</p>
-                  </div>
+                  <h2 className="truncate text-[15px] font-black text-[#fdfcfb] sm:text-base">الدروس والمحاضرات</h2>
+                  <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-5 text-[#fdfcfb]/78">دروس مرتبة من الشيخ إلى السلسلة ثم الدرس، من مصادر يتم اعتمادها ومراجعتها.</p>
                 </div>
-                <ChevronLeft className="h-5 w-5 shrink-0 text-[#b88a4f] transition-transform group-hover:-translate-x-0.5" />
+                <ChevronLeft className="relative z-10 mb-1 h-5 w-5 shrink-0 text-[#f7dfb4] transition-transform duration-200 group-hover:-translate-x-0.5" />
               </motion.button>
             )}
 

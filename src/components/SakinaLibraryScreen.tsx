@@ -17,7 +17,6 @@ import {
   Play,
   Search,
   ShieldCheck,
-  Sparkles,
   Video,
   X,
 } from "lucide-react";
@@ -41,6 +40,7 @@ const PROGRESS_KEY = "sakeenah_lesson_progress_v1";
 const SCHOLAR_INTRO_STORAGE_KEY = "sakeenah_amgad_samir_profile_intro_v1";
 const AMGAD_GENERAL_SOURCE_ID = "amgad-samir-general-youtube";
 const STANDALONE_SERIES_ID = "__standalone__";
+const SAKINA_LIBRARY_HERO_IMAGE = "/images/sakina-library/sakina-library-hero.webp";
 
 function readStringSet(key: string) {
   try {
@@ -335,21 +335,27 @@ export default function SakinaLibraryScreen({
         <AnimatePresence mode="wait">
           {view === "library" && (
             <motion.div key="library" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-              <section className="cut-crystal-panel relative overflow-hidden rounded-[30px] p-6 sm:p-8">
-                <div className="relative z-10 max-w-2xl">
-                  <div className="mb-3 flex items-center gap-2 text-[#b88a4f]">
-                    <GraduationCap className="h-5 w-5" />
-                    <span className="text-xs font-black tracking-wide">محتوى علمي منتقى</span>
+              <section
+                className="cut-crystal-panel relative min-h-[196px] overflow-hidden rounded-[30px] border border-[#fdfcfb]/20 bg-[#2b1a10] p-4 text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)] sm:min-h-[214px] sm:p-5"
+                style={{
+                  backgroundImage: `linear-gradient(270deg, rgba(43,26,16,0.88) 0%, rgba(43,26,16,0.58) 52%, rgba(43,26,16,0.22) 100%), url(${SAKINA_LIBRARY_HERO_IMAGE})`,
+                  backgroundPosition: "center",
+                  backgroundSize: "cover",
+                }}
+              >
+                <div className="relative z-10 max-w-xl rounded-[24px] border border-[#f7dfb4]/15 bg-[#2b1a10]/28 p-3 backdrop-blur-[2px] sm:p-4">
+                  <div className="mb-2 flex items-center gap-2 text-[#f7dfb4]">
+                    <GraduationCap className="h-4 w-4" />
+                    <span className="text-[11px] font-black tracking-wide">محتوى علمي منتقى</span>
                   </div>
-                  <h1 className="text-[26px] font-black leading-tight sm:text-[32px]">تعلم بهدوء، من مصادر موثوقة</h1>
-                  <p className="mt-3 max-w-xl text-sm font-bold leading-7 text-[#7f6a55]">دروس ومحاضرات مرتبة داخل مكتبة سكينة، من الشيخ إلى السلسلة ثم الدرس، بلا تشتت ولا نتائج عشوائية.</p>
-                  <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold text-[#7f6a55]">
-                    <span className="cut-crystal-capsule px-3 py-2">ترشيح ومراجعة</span>
-                    <span className="cut-crystal-capsule px-3 py-2">متابعة من حيث توقفت</span>
-                    <span className="cut-crystal-capsule px-3 py-2">مشغل رسمي</span>
+                  <h1 className="text-[23px] font-black leading-tight sm:text-[28px]">تعلم بهدوء، من مصادر موثوقة</h1>
+                  <p className="mt-2 max-w-xl text-xs font-bold leading-6 text-[#fdfcfb]/78">دروس ومحاضرات مرتبة داخل مكتبة سكينة، من الشيخ إلى السلسلة ثم الدرس، بلا تشتت ولا نتائج عشوائية.</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-bold text-[#f7dfb4]">
+                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">ترشيح ومراجعة</span>
+                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">متابعة من حيث توقفت</span>
+                    <span className="cut-crystal-capsule border-[#f7dfb4]/20 bg-[#2b1a10]/25 px-2.5 py-1.5">مشغل رسمي</span>
                   </div>
                 </div>
-                <Sparkles className="absolute -bottom-8 -left-4 h-40 w-40 text-[#b88a4f]/10" />
               </section>
 
               <form onSubmit={(event) => event.preventDefault()} className="cut-crystal-input flex items-center gap-3 px-4 py-3">
