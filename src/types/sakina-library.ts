@@ -30,7 +30,7 @@ export interface SakinaLessonSource {
 
 export interface SakinaLessonItem {
   id: string;
-  seriesId: string;
+  seriesId?: string;
   scholarId: string;
   titleAr: string;
   descriptionShort?: string;
@@ -66,6 +66,7 @@ export interface SakinaScholar {
   verificationSourceUrl?: string;
   sources?: SakinaScholarSource[];
   series: SakinaLessonSeries[];
+  standaloneLessons?: SakinaLessonItem[];
 }
 
 export interface SakinaLibraryCatalog {

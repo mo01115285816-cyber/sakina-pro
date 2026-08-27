@@ -40,9 +40,14 @@ type SeriesRow = {
   sort_order: number;
 };
 
+const LIBRARY_CACHE_KEY = "sakeenah_lesson_library_cache_v1";
+const LIBRARY_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+type LibraryCache = { savedAt: number; scholars: SakinaScholar[] };
+
 type LessonRow = {
   id: string;
-  series_id: string;
+  series_id: string | null;
   source_id: string;
   youtube_video_id: string | null;
   canonical_url: string;
@@ -61,6 +66,30 @@ function mapCatalog(
   lessons: LessonRow[],
 ): SakinaScholar[] {
   const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const mapLesson = (lesson: LessonRow, scholar: ScholarRow): SakinaLessonItem => {
+    const source = sourceById.get(lesson.source_id);
+    return {
+      id: lesson.id,
+      seriesId: lesson.series_id ?? undefined,
+      scholarId: scholar.id,
+      titleAr: lesson.title_ar,
+      descriptionShort: lesson.description_ar ?? undefined,
+      episodeNumber: lesson.lesson_number,
+      sortOrder: lesson.sort_order,
+      durationSeconds: lesson.duration_seconds ?? undefined,
+      thumbnailUrl: lesson.thumbnail_url ?? undefined,
+      source: lesson.youtube_video_id
+        ? {
+          provider: "youtube",
+          channelId: source?.channel_id ?? "",
+          channelUrl: source?.url ?? "",
+          videoId: lesson.youtube_video_id,
+          canonicalUrl: lesson.canonical_url,
+        }
+        : undefined,
+      status: "published",
+    };
+  };
   return scholars.map((scholar) => ({
     id: scholar.id,
     slug: scholar.slug,
@@ -97,31 +126,11 @@ function mapCatalog(
         status: "published",
         lessons: lessons
           .filter((lesson) => lesson.series_id === item.id)
-          .map((lesson): SakinaLessonItem => {
-            const source = sourceById.get(lesson.source_id);
-            return {
-              id: lesson.id,
-              seriesId: lesson.series_id,
-              scholarId: scholar.id,
-              titleAr: lesson.title_ar,
-              descriptionShort: lesson.description_ar ?? undefined,
-              episodeNumber: lesson.lesson_number,
-              sortOrder: lesson.sort_order,
-              durationSeconds: lesson.duration_seconds ?? undefined,
-              thumbnailUrl: lesson.thumbnail_url ?? undefined,
-              source: lesson.youtube_video_id
-                ? {
-                  provider: "youtube",
-                  channelId: source?.channel_id ?? "",
-                  channelUrl: source?.url ?? "",
-                  videoId: lesson.youtube_video_id,
-                  canonicalUrl: lesson.canonical_url,
-                }
-                : undefined,
-              status: "published",
-            };
-          }),
+          .map((lesson) => mapLesson(lesson, scholar)),
       })),
+    standaloneLessons: lessons
+      .filter((lesson) => lesson.series_id === null && sourceById.get(lesson.source_id)?.scholar_id === scholar.id)
+      .map((lesson) => mapLesson(lesson, scholar)),
   }));
 }
 
@@ -163,12 +172,12 @@ async function loadFromSupabase(signal?: AbortSignal) {
   if (seriesResult.error) throw seriesResult.error;
 
   const series = (seriesResult.data ?? []) as SeriesRow[];
-  const seriesIds = series.map((row) => row.id);
-  const lessonsResult = seriesIds.length > 0
+  const sourceIds = (sourcesResult.data ?? []).map((row) => (row as SourceRow).id);
+  const lessonsResult = sourceIds.length > 0
     ? await client
       .from("lesson_items")
       .select("id,series_id,source_id,youtube_video_id,canonical_url,title_ar,description_ar,lesson_number,duration_seconds,thumbnail_url,sort_order")
-      .in("series_id", seriesIds)
+      .in("source_id", sourceIds)
       .eq("status", "published")
       .not("published_at", "is", null)
       .order("sort_order", { ascending: true })
@@ -184,11 +193,36 @@ async function loadFromSupabase(signal?: AbortSignal) {
  * يقرأ المحتوى المنشور فقط من Supabase؛ RLS يمنع المسودات ومواد المراجعة.
  * عند غياب إعداد Supabase أو فشل القراءة، نُبقي الكتالوج المحلي المنشور الحالي.
  */
+function readLibraryCache(): LibraryCache | null {
+  try {
+    const raw = localStorage.getItem(LIBRARY_CACHE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<LibraryCache>;
+    if (!Array.isArray(value.scholars) || typeof value.savedAt !== "number") return null;
+    return { savedAt: value.savedAt, scholars: value.scholars };
+  } catch {
+    return null;
+  }
+}
+
+function writeLibraryCache(scholars: SakinaScholar[]) {
+  try {
+    localStorage.setItem(LIBRARY_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), scholars } satisfies LibraryCache));
+  } catch {
+    // The network result remains usable when storage is unavailable or full.
+  }
+}
+
 export async function loadPublishedSakinaScholars(signal?: AbortSignal): Promise<SakinaScholar[]> {
   const fallback = getPublishedScholars();
+  const cached = readLibraryCache();
+  if (cached && Date.now() - cached.savedAt < LIBRARY_CACHE_TTL_MS) return cached.scholars;
   try {
     const remote = await loadFromSupabase(signal);
-    if (remote.length > 0) return remote;
+    if (remote.length > 0) {
+      writeLibraryCache(remote);
+      return remote;
+    }
   } catch {
     // The local catalog remains available while the public data service is unavailable.
   }
@@ -201,7 +235,10 @@ export async function loadPublishedSakinaScholars(signal?: AbortSignal): Promise
     });
     if (!response.ok) throw new Error(`Library request failed: ${response.status}`);
     const payload = await response.json() as { success?: boolean; scholars?: SakinaScholar[] };
-    if (payload.success === true && Array.isArray(payload.scholars) && payload.scholars.length > 0) return payload.scholars;
+    if (payload.success === true && Array.isArray(payload.scholars) && payload.scholars.length > 0) {
+      writeLibraryCache(payload.scholars);
+      return payload.scholars;
+    }
   } catch {
     // Keep the local catalog as the last safe fallback.
   }

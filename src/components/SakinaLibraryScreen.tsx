@@ -40,6 +40,7 @@ const SAVED_LESSONS_KEY = "sakeenah_lesson_bookmarks_v1";
 const PROGRESS_KEY = "sakeenah_lesson_progress_v1";
 const SCHOLAR_INTRO_STORAGE_KEY = "sakeenah_amgad_samir_profile_intro_v1";
 const AMGAD_GENERAL_SOURCE_ID = "amgad-samir-general-youtube";
+const STANDALONE_SERIES_ID = "__standalone__";
 
 function readStringSet(key: string) {
   try {
@@ -122,10 +123,27 @@ export default function SakinaLibraryScreen({
     [scholars, selectedScholarId],
   );
 
-  const selectedSeries = useMemo(
-    () => selectedScholar?.series.find((series) => series.id === selectedSeriesId) ?? null,
-    [selectedScholar, selectedSeriesId],
+  const selectedStandaloneLesson = useMemo(
+    () => selectedScholar?.standaloneLessons?.find((lesson) => lesson.id === selectedLessonId) ?? null,
+    [selectedScholar, selectedLessonId],
   );
+
+  const selectedSeries = useMemo(() => {
+    const series = selectedScholar?.series.find((item) => item.id === selectedSeriesId);
+    if (series) return series;
+    if (selectedSeriesId === STANDALONE_SERIES_ID && selectedStandaloneLesson) {
+      return {
+        id: STANDALONE_SERIES_ID,
+        scholarId: selectedStandaloneLesson.scholarId,
+        titleAr: "دروس القناة العامة",
+        description: "فيديوهات منشورة من القناة العامة بدون تصنيف داخل سلسلة.",
+        sortOrder: Number.MAX_SAFE_INTEGER,
+        status: "published" as const,
+        lessons: [selectedStandaloneLesson],
+      } satisfies SakinaLessonSeries;
+    }
+    return null;
+  }, [selectedScholar, selectedSeriesId, selectedStandaloneLesson]);
 
   const selectedLesson = useMemo(
     () => selectedSeries?.lessons.find((lesson) => lesson.id === selectedLessonId) ?? null,
@@ -141,6 +159,13 @@ export default function SakinaLibraryScreen({
     () => selectedScholar?.series.filter((series) => !selectedSource || series.sourceId === selectedSource.id) ?? [],
     [selectedScholar, selectedSource],
   );
+
+  const visibleStandaloneLessons = useMemo(
+    () => selectedScholar?.standaloneLessons?.filter((lesson) => !selectedSource || lesson.source?.channelId === selectedSource.channelId) ?? [],
+    [selectedScholar, selectedSource],
+  );
+
+  const standaloneSeries = useMemo<SakinaLessonSeries | null>(() => selectedScholar ? ({ id: STANDALONE_SERIES_ID, scholarId: selectedScholar.id, titleAr: "دروس القناة العامة", description: "فيديوهات منشورة من القناة العامة بدون تصنيف داخل سلسلة.", sortOrder: Number.MAX_SAFE_INTEGER, status: "published", lessons: selectedScholar.standaloneLessons ?? [] }) : null, [selectedScholar]);
 
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ar");
@@ -160,6 +185,12 @@ export default function SakinaLibraryScreen({
           }
         }
       }
+      const standaloneSeries: SakinaLessonSeries = { id: STANDALONE_SERIES_ID, scholarId: scholar.id, titleAr: "دروس القناة العامة", description: "فيديوهات منشورة من القناة العامة بدون تصنيف داخل سلسلة.", sortOrder: Number.MAX_SAFE_INTEGER, status: "published", lessons: scholar.standaloneLessons ?? [] };
+      for (const lesson of scholar.standaloneLessons ?? []) {
+        if (lesson.titleAr.toLocaleLowerCase("ar").includes(normalized)) {
+          results.push({ kind: "lesson", scholar, series: standaloneSeries, lesson });
+        }
+      }
     }
     return results.slice(0, 12);
   }, [query, scholars]);
@@ -171,6 +202,10 @@ export default function SakinaLibraryScreen({
         for (const lesson of series.lessons) {
           if (savedLessonIds.has(lesson.id)) lessons.push({ scholar, series, lesson });
         }
+      }
+      const standaloneSeries: SakinaLessonSeries = { id: STANDALONE_SERIES_ID, scholarId: scholar.id, titleAr: "دروس القناة العامة", description: "فيديوهات منشورة من القناة العامة بدون تصنيف داخل سلسلة.", sortOrder: Number.MAX_SAFE_INTEGER, status: "published", lessons: scholar.standaloneLessons ?? [] };
+      for (const lesson of scholar.standaloneLessons ?? []) {
+        if (savedLessonIds.has(lesson.id)) lessons.push({ scholar, series: standaloneSeries, lesson });
       }
     }
     return lessons;
@@ -368,8 +403,8 @@ export default function SakinaLibraryScreen({
                 </div>
               </section>
               {selectedScholar.sources && selectedScholar.sources.length > 0 && (
-                <nav className="flex justify-center" aria-label="مصادر الشيخ">
-                  <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-[32px] cut-crystal-capsule px-1.5 py-1.5 shadow-lg">
+                <nav className="fixed inset-x-0 bottom-5 z-40 flex justify-center pointer-events-none px-2" aria-label="مصادر الشيخ">
+                  <div className="pointer-events-auto flex items-center gap-1 rounded-[32px] cut-crystal-capsule px-2 py-1.5 shadow-lg max-w-full">
                     {selectedScholar.sources.map((source) => {
                       const isActive = selectedSource?.id === source.id;
                       return (
@@ -382,11 +417,13 @@ export default function SakinaLibraryScreen({
                             setSelectedLessonId(null);
                             setView("scholar");
                           }}
-                          className={`relative flex shrink-0 items-center gap-2 rounded-[24px] px-4 py-2 transition-colors duration-200 ${isActive ? "text-[#2b1a10]" : "text-[#7f6a55] hover:bg-[#2b1a10]/5"}`}
+                          className={`relative flex items-center gap-1.5 rounded-[22px] transition-all duration-200 cursor-pointer ${isActive ? "px-4 py-2 text-[#2b1a10]" : "px-3 py-2 text-[#7f6a55] hover:bg-[#2b1a10]/5"}`}
                         >
                           {isActive && <motion.div layoutId="amgadSourceIndicator" className="absolute inset-0 rounded-[24px] bg-[#2b1a10]/10 shadow-inner" transition={{ type: "spring", stiffness: 400, damping: 30 }} />}
-                          <span className="relative z-10 flex items-center justify-center"><Video className="h-4 w-4" /></span>
-                          <span className="relative z-10 whitespace-nowrap text-xs font-bold">{source.labelAr}</span>
+                          <span className="relative z-10 flex items-center justify-center"><Video className="h-[17px] w-[17px]" /></span>
+                          <AnimatePresence mode="popLayout">
+                            {isActive && <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="relative z-10 overflow-hidden text-xs font-bold whitespace-nowrap">{source.labelAr}</motion.span>}
+                          </AnimatePresence>
                         </button>
                       );
                     })}
@@ -397,6 +434,12 @@ export default function SakinaLibraryScreen({
                 <div className="flex items-center justify-between px-1"><h2 className="text-base font-black">{selectedSource?.labelAr ?? "السلاسل التعليمية"}</h2><span className="text-xs font-bold text-[#7f6a55]">{visibleSeries.length} سلاسل</span></div>
                 {visibleSeries.length > 0 ? visibleSeries.map((series) => <SeriesCard key={series.id} series={series} onClick={() => openSeries(selectedScholar, series)} />) : <EmptyState compact title="السلاسل قيد التجهيز" description="لا توجد سلاسل منشورة لهذا المصدر حتى الآن." />}
               </section>
+              {selectedSource?.id === selectedScholar.sources?.find((source) => source.channelId === "UC_FFy2YxiElNMba-t-6VwTA")?.id && visibleStandaloneLessons.length > 0 && standaloneSeries && (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between px-1"><h2 className="text-base font-black">دروس القناة العامة</h2><span className="text-xs font-bold text-[#7f6a55]">{visibleStandaloneLessons.length} فيديو</span></div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visibleStandaloneLessons.map((lesson) => <LessonVideoCard key={lesson.id} lesson={lesson} progress={progress[lesson.id] ?? 0} saved={savedLessonIds.has(lesson.id)} onToggleSaved={() => toggleSaved(lesson.id)} onClick={() => openLesson(selectedScholar, standaloneSeries, lesson)} />)}</div>
+                </section>
+              )}
               {showScholarIntro && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2b1a10]/35 px-4 py-8 backdrop-blur-sm">
                   <motion.section initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md cut-crystal-panel rounded-[30px] p-5 shadow-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="amgad-profile-intro-title">

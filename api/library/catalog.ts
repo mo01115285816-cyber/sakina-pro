@@ -43,7 +43,7 @@ type SeriesRow = {
 
 type LessonRow = {
   id: string;
-  series_id: string;
+  series_id: string | null;
   source_id: string;
   youtube_video_id: string | null;
   canonical_url: string;
@@ -156,12 +156,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (seriesResult.error) throw seriesResult.error;
 
     const series = (seriesResult.data ?? []) as SeriesRow[];
-    const seriesIds = series.map((row) => row.id);
-    const lessonsResult = seriesIds.length > 0
+    const sources = (sourcesResult.data ?? []) as SourceRow[];
+    const sourceIds = sources.map((row) => row.id);
+    const lessonsResult = sourceIds.length > 0
       ? await supabase
         .from("lesson_items")
         .select("id,series_id,source_id,youtube_video_id,canonical_url,title_ar,description_ar,lesson_number,duration_seconds,thumbnail_url,sort_order")
-        .in("series_id", seriesIds)
+        .in("source_id", sourceIds)
         .eq("status", "published")
         .not("published_at", "is", null)
         .order("sort_order", { ascending: true })
@@ -169,8 +170,28 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       : { data: [], error: null };
     if (lessonsResult.error) throw lessonsResult.error;
 
-    const sources = (sourcesResult.data ?? []) as SourceRow[];
     const lessons = (lessonsResult.data ?? []) as LessonRow[];
+    const mapLesson = (lesson: LessonRow, scholarId: string) => ({
+      id: lesson.id,
+      seriesId: lesson.series_id ?? undefined,
+      scholarId,
+      titleAr: lesson.title_ar,
+      descriptionShort: lesson.description_ar ?? undefined,
+      episodeNumber: lesson.lesson_number,
+      sortOrder: lesson.sort_order,
+      durationSeconds: lesson.duration_seconds ?? undefined,
+      thumbnailUrl: lesson.thumbnail_url ?? undefined,
+      source: lesson.youtube_video_id
+        ? {
+          provider: "youtube" as const,
+          channelId: sources.find((source) => source.id === lesson.source_id)?.channel_id ?? "",
+          channelUrl: sources.find((source) => source.id === lesson.source_id)?.url ?? "",
+          videoId: lesson.youtube_video_id,
+          canonicalUrl: lesson.canonical_url,
+        }
+        : undefined,
+      status: "published" as const,
+    });
     const catalog = scholars.map((scholar) => ({
       id: scholar.id,
       slug: scholar.slug,
@@ -207,28 +228,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           status: "published" as const,
           lessons: lessons
             .filter((lesson) => lesson.series_id === item.id)
-            .map((lesson) => ({
-              id: lesson.id,
-              seriesId: lesson.series_id,
-              scholarId: scholar.id,
-              titleAr: lesson.title_ar,
-              descriptionShort: lesson.description_ar ?? undefined,
-              episodeNumber: lesson.lesson_number,
-              sortOrder: lesson.sort_order,
-              durationSeconds: lesson.duration_seconds ?? undefined,
-              thumbnailUrl: lesson.thumbnail_url ?? undefined,
-              source: lesson.youtube_video_id
-                ? {
-                  provider: "youtube" as const,
-                  channelId: sources.find((source) => source.id === lesson.source_id)?.channel_id ?? "",
-                  channelUrl: sources.find((source) => source.id === lesson.source_id)?.url ?? "",
-                  videoId: lesson.youtube_video_id,
-                  canonicalUrl: lesson.canonical_url,
-                }
-                : undefined,
-              status: "published" as const,
-            })),
+            .map((lesson) => mapLesson(lesson, scholar.id)),
         })),
+      standaloneLessons: lessons
+        .filter((lesson) => lesson.series_id === null && sources.some((source) => source.id === lesson.source_id && source.scholar_id === scholar.id))
+        .map((lesson) => mapLesson(lesson, scholar.id)),
     }));
 
     json(res, 200, {
