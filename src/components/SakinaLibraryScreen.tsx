@@ -403,7 +403,7 @@ export default function SakinaLibraryScreen({
                 </div>
               </section>
               {selectedScholar.sources && selectedScholar.sources.length > 0 && (
-                <nav className="fixed inset-x-0 bottom-5 z-40 flex justify-center pointer-events-none px-2" aria-label="مصادر الشيخ">
+                <nav className="relative z-20 -mt-2 flex justify-center" aria-label="مصادر الشيخ">
                   <div className="pointer-events-auto flex items-center gap-1 rounded-[32px] cut-crystal-capsule px-2 py-1.5 shadow-lg max-w-full">
                     {selectedScholar.sources.map((source) => {
                       const isActive = selectedSource?.id === source.id;
