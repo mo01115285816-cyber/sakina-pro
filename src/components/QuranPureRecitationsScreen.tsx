@@ -26,6 +26,41 @@ const RECITER_IMAGE_PATHS: Record<string, string> = {
   ),
 };
 
+// Profile facts are intentionally brief and sourced from verified institutional or reference pages:
+// Minshawi — BBC Arabic; Ahmad bin Taleb — Manarat Al-Haramain; Abdullah Al-Qarafi — Presidency of Religious Affairs;
+// Mishary Alafasy — Midad scholar profile. Muhammad Ayyub is limited to his documented role as a Saudi reciter and imam.
+const PURE_RECITER_PROFILE_META: Record<string, {
+  bioShort: string;
+  country: string;
+  countryFlag: string;
+}> = {
+  "mohammed-siddiq-al-minshawi": {
+    bioShort: "قارئ مصري من رواد التلاوة الإذاعية، عُرف بصوته الخاشع وتسجيلاته القرآنية المؤثرة.",
+    country: "مصر",
+    countryFlag: "🇪🇬",
+  },
+  "ahmed-bin-taleb": {
+    bioShort: "قارئ وإمام سعودي، ومن أئمة المسجد النبوي الشريف سابقًا.",
+    country: "السعودية",
+    countryFlag: "🇸🇦",
+  },
+  "muhammad-ayyub": {
+    bioShort: "قارئ وإمام سعودي، ومن أئمة المسجد النبوي الشريف.",
+    country: "السعودية",
+    countryFlag: "🇸🇦",
+  },
+  "abdullah-abdulmohsen-al-qarafi": {
+    bioShort: "قارئ وإمام سعودي، إمام المسجد النبوي وعضو هيئة التدريس بالجامعة الإسلامية بالمدينة المنورة.",
+    country: "السعودية",
+    countryFlag: "🇸🇦",
+  },
+  "mishary-rashid-al-afasy": {
+    bioShort: "قارئ وإمام وخطيب كويتي، درس القراءات والتفسير بالجامعة الإسلامية بالمدينة المنورة.",
+    country: "الكويت",
+    countryFlag: "🇰🇼",
+  },
+};
+
 export type PureAudioTrack = {
   surahId: number;
   url: string;
@@ -182,11 +217,15 @@ export default function QuranPureRecitationsScreen({
 
   const profileReciter = useMemo<Reciter | null>(() => {
     if (!selectedReciter) return null;
+    const profileMeta = PURE_RECITER_PROFILE_META[selectedReciter.id];
     return {
       id: toStableReciterId(selectedReciter.id),
       name: selectedReciter.name,
       letter: selectedReciter.name.trim().charAt(0),
       photoUrl: selectedReciter.photoUrl,
+      bioShort: selectedReciter.description ?? profileMeta?.bioShort,
+      country: profileMeta?.country,
+      countryFlag: profileMeta?.countryFlag,
       moshaf: [],
     };
   }, [selectedReciter]);
@@ -334,6 +373,7 @@ export default function QuranPureRecitationsScreen({
                 onReadSurah={onReadSurah}
                 resolveSurahUrl={(surahId) => selectedReciter?.tracks.find((track) => track.surahId === surahId)?.url ?? ""}
                 showHeader={false}
+        showPortfolioHero
               />
             ) : null}
           </>

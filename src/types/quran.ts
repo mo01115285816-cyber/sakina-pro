@@ -12,6 +12,9 @@ export interface Reciter {
   letter: string;
   photoUrl?: string;
   photo?: string;
+  bioShort?: string;
+  country?: string;
+  countryFlag?: string;
   moshaf: Moshaf[];
 }
 

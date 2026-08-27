@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronRight,
   Bookmark,
-  Clock,
   Download,
   Trash2,
   FolderDown,
   CloudLightning,
   Smartphone,
   BookOpen,
+  Clock,
 } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
 import { surahNames } from "@/data/surahNames";
@@ -27,6 +27,7 @@ interface Props {
   onReadSurah?: (surahId: number) => void;
   resolveSurahUrl?: (surahId: number) => string;
   showHeader?: boolean;
+  showPortfolioHero?: boolean;
 }
 
 export default function QuranSurahsScreen({
@@ -40,6 +41,7 @@ export default function QuranSurahsScreen({
   onReadSurah,
   resolveSurahUrl,
   showHeader = true,
+  showPortfolioHero = false,
 }: Props) {
   const [downloadedSurahs, setDownloadedSurahs] = useState<number[]>([]);
   const [downloadingSurahs, setDownloadingSurahs] = useState<number[]>([]);
@@ -148,56 +150,97 @@ export default function QuranSurahsScreen({
       </div>}
 
       <div className="flex-1 overflow-y-auto hide-scrollbar pt-24">
-        {/* Reciter Info Area */}
-        <div className="px-6 pb-6 flex items-center gap-4 z-10 relative">
-          {/* Art thumbnail - premium gold gradient */}
-          <div className="relative w-[72px] h-[72px] rounded-[24px] shrink-0 cut-crystal-panel p-1 text-white">
-            <div className="relative h-full w-full overflow-hidden rounded-[20px] bg-gradient-to-br from-[#deab65] to-[#b88a4f] flex items-center justify-center text-[26px] font-bold font-serif">
-            {reciter.photoUrl || reciter.photo ? (
-              <img
-                src={reciter.photoUrl || reciter.photo}
-                alt={`صورة ${reciter.name}`}
-                width={72}
-                height={72}
-                loading="eager"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
-            ) : reciter.name.trim().charAt(0)}
-            </div>
-          </div>
-          <div className="text-right flex-1">
-            <h2 className="text-[22px] font-bold text-[#2b1a10] leading-tight mb-1">
-              {reciter.name}
-            </h2>
-            <p className="text-[13px] text-[#7f6a55] font-bold">
-              {moshaf.name.replace("مرتل", "").trim()} - مرتل
-            </p>
-          </div>
-        </div>
+        {showPortfolioHero ? (
+          <>
+            {/* Unified Reciter Portfolio Hero — used by Sakeenah Pure Recitations only */}
+            <section className="relative isolate -mt-24 h-[min(62svh,520px)] min-h-[360px] overflow-hidden rounded-b-[28px] border border-[#fdfcfb]/10 bg-[#2b1a10] text-[#fdfcfb] shadow-[var(--glass-ambient),var(--glass-lensing)]">
+              {reciter.photoUrl || reciter.photo ? (
+                <img
+                  src={reciter.photoUrl || reciter.photo}
+                  alt={`صورة ${reciter.name}`}
+                  width={1600}
+                  height={1000}
+                  loading="eager"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover object-[center_24%]"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#deab65] via-[#b88a4f] to-[#2b1a10]" aria-hidden="true">
+                  <span className="font-serif text-[clamp(5rem,18vw,10rem)] font-black text-[#f7dfb4]/80">{reciter.name.trim().charAt(0)}</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(222,171,101,0.18),transparent_42%),linear-gradient(180deg,rgba(43,26,16,0.08)_18%,rgba(43,26,16,0.18)_43%,rgba(43,26,16,0.97)_100%)]" aria-hidden="true" />
+              {reciter.country && (
+                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1 rounded-full border border-[#deab65]/25 bg-[#2b1a10]/45 px-1.5 py-0.5 text-[9px] font-bold leading-none text-[#f7dfb4] shadow-[0_8px_20px_-8px_rgba(43,26,16,0.45),inset_0_1px_0_rgba(222,171,101,0.25)] backdrop-blur-md sm:bottom-6 sm:left-6 sm:px-2 sm:py-1 sm:text-[10px]" dir="rtl">
+                  <span>{reciter.country}</span>
+                  <span aria-hidden="true" className="text-[10px]">{reciter.countryFlag}</span>
+                </div>
+              )}
+              <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-7 pt-16 text-center sm:px-8 sm:pb-9">
+                <div className="mx-auto flex max-w-3xl flex-col items-center">
+                  <h1 className="text-2xl font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:text-3xl">{reciter.name}</h1>
+                  <p className="mt-3 max-w-2xl text-xs font-bold leading-6 text-[#fdfcfb]/75 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{reciter.bioShort ?? "تلاوة مرتلة من المصحف الشريف ضمن مكتبة التلاوات."}</p>
+                </div>
+              </div>
+            </section>
 
-        {/* Primary Action Buttons */}
-        <div className="px-6 pb-8 flex items-center gap-3 z-10 relative">
-          {/* Play All */}
-          <button
-            onClick={() => {
-              if (surahIds.length > 0) {
-                onPlaySurah(surahIds[0], surahIds);
-              }
-            }}
-            className="flex-1 bg-gradient-to-r from-[#deab65] to-[#b88a4f] hover:opacity-95 text-white py-3.5 rounded-full font-bold text-[14px] shadow-[0_8px_24px_rgba(184,138,79,0.25)] transition-opacity active:scale-[0.98] text-center"
-          >
-            تشغيل الكل
-          </button>
-          {/* Timer play */}
-          <button
-            onClick={onTriggerTimer}
-            className="flex-1 cut-crystal-capsule text-[#b88a4f] py-3.5 rounded-full flex items-center justify-center gap-2 font-bold text-[14px] transition-all active:scale-[0.98] shadow-sm cursor-pointer"
-          >
-            <Clock size={16} />
-            <span>مع مؤقت</span>
-          </button>
-        </div>
+            {/* Pure recitations intentionally expose one compact play action; no timer button. */}
+            <div className="relative z-10 flex justify-center px-6 pb-8 pt-3">
+              <button
+                onClick={() => {
+                  if (surahIds.length > 0) {
+                    onPlaySurah(surahIds[0], surahIds);
+                  }
+                }}
+                className="w-auto min-w-[112px] cut-crystal-capsule-gold px-5 py-2.5 text-[13px] font-black shadow-[0_8px_24px_rgba(184,138,79,0.25)] transition active:scale-[0.98]"
+              >
+                تشغيل
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Existing general-reciter header remains unchanged outside Pure Recitations. */}
+            <div className="relative z-10 flex items-center gap-4 px-6 pb-6">
+              <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[24px] border border-[#c49a62] bg-gradient-to-br from-[#deab65] to-[#b88a4f] text-[26px] font-bold text-white shadow-[0_8px_24px_rgba(184,138,79,0.2)] flex items-center justify-center font-serif">
+                {reciter.photoUrl || reciter.photo ? (
+                  <img
+                    src={reciter.photoUrl || reciter.photo}
+                    alt={`صورة ${reciter.name}`}
+                    width={72}
+                    height={72}
+                    loading="eager"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
+                ) : reciter.name.trim().charAt(0)}
+              </div>
+              <div className="flex-1 text-right">
+                <h2 className="mb-1 text-[22px] font-bold leading-tight text-[#2b1a10]">{reciter.name}</h2>
+                <p className="text-[13px] font-bold text-[#7f6a55]">{moshaf.name.replace("مرتل", "").trim()} - مرتل</p>
+              </div>
+            </div>
+            <div className="relative z-10 flex items-center gap-3 px-6 pb-8">
+              <button
+                onClick={() => {
+                  if (surahIds.length > 0) {
+                    onPlaySurah(surahIds[0], surahIds);
+                  }
+                }}
+                className="flex-1 rounded-full bg-gradient-to-r from-[#deab65] to-[#b88a4f] py-3.5 text-center text-[14px] font-bold text-white shadow-[0_8px_24px_rgba(184,138,79,0.25)] transition-opacity hover:opacity-95 active:scale-[0.98]"
+              >
+                تشغيل الكل
+              </button>
+              <button
+                onClick={onTriggerTimer}
+                className="flex-1 cut-crystal-capsule flex items-center justify-center gap-2 rounded-full py-3.5 text-[14px] font-bold text-[#b88a4f] shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Clock size={16} />
+                <span>مع مؤقت</span>
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Surahs List (Beautiful Cards) */}
         <div className="px-6 pb-36 relative z-0 space-y-3">
