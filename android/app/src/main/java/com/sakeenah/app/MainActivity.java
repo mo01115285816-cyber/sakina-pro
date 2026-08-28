@@ -18,7 +18,6 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.sakeenah.app.plugin.AdhanPlayerPlugin;
-import com.sakeenah.app.plugin.DynamicIslandPlugin;
 import com.sakeenah.app.plugin.PrayerAlarmPlugin;
 import com.sakeenah.app.plugin.RadioCapturePlugin;
 
@@ -27,7 +26,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(AdhanPlayerPlugin.class);
-        registerPlugin(DynamicIslandPlugin.class);
         registerPlugin(PrayerAlarmPlugin.class);
         registerPlugin(RadioCapturePlugin.class);
         super.onCreate(savedInstanceState);
