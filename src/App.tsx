@@ -162,6 +162,7 @@ function AuthenticatedApp() {
 
   /* ── NEW state ── */
   const [activeTab, setActiveTab] = useState<TabType>("main");
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set(["main"]));
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [pendingSharedToken, setPendingSharedToken] = useState<string | null>(() => localStorage.getItem("sakeenah_pending_share_token"));
   const [pendingForkConversationId, setPendingForkConversationId] = useState<string | null>(() => localStorage.getItem("sakeenah_pending_fork_conversation_id"));
@@ -300,6 +301,17 @@ function AuthenticatedApp() {
 
   /* ── Effects ── */
 
+  // Keep visited tabs mounted so returning to them preserves scroll, filters,
+  // selected items, and already-loaded data instead of showing a fresh loader.
+  useEffect(() => {
+    setVisitedTabs((previous) => {
+      if (previous.has(activeTab)) return previous;
+      const next = new Set(previous);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
+
   // Bootstrap Supabase auth before exposing protected features.
   useEffect(() => {
     let disposed = false;
@@ -338,6 +350,9 @@ function AuthenticatedApp() {
   useEffect(() => {
     void syncSakeenahClarity(activeTab === "sakeenah-ai");
   }, [activeTab]);
+
+  const shouldShowQuranNav = activeTab === "quran" && quranHideNav;
+  const shouldShowHadithNav = activeTab === "hadith" && hadithHideNav;
 
   useEffect(() => {
     const stopSharedLinkListener = listenForNativeSharedConversationLink((token) => {
@@ -1490,9 +1505,9 @@ function AuthenticatedApp() {
         </div>
 
         {/* TAB: AZKAR */}
-        {activeTab === "azkar" && !showAzkarCounter && (
+        {visitedTabs.has("azkar") && (
           <Suspense fallback={<ScreenLoader label="جارٍ تحميل الأذكار..." />}>
-            <div className="block w-full overflow-x-hidden">
+            <div className={activeTab === "azkar" && !showAzkarCounter ? "block w-full overflow-x-hidden" : "hidden"}>
               <AzkarTabScreen
                 onOpenAzkarCounter={handleOpenAzkarCounter}
                 onOpenHisnCategory={handleOpenHisnCategory}
@@ -1503,10 +1518,11 @@ function AuthenticatedApp() {
         )}
 
         {/* TAB: QURAN */}
-        {activeTab === "quran" && !showAzkarCounter && (
+        {visitedTabs.has("quran") && (
           <Suspense fallback={<ScreenLoader label="جارٍ تحميل القرآن..." />}>
-            <div className="block relative h-full min-h-screen w-full">
+            <div className={activeTab === "quran" && !showAzkarCounter ? "block relative h-full min-h-screen w-full" : "hidden"}>
               <QuranTabScreen
+                isActive={activeTab === "quran" && !showAzkarCounter}
                 onBack={handleBackToMain}
                 onHideNavChange={setQuranHideNav}
               />
@@ -1515,10 +1531,11 @@ function AuthenticatedApp() {
         )}
 
         {/* TAB: HADITH BOOKS */}
-        {activeTab === "hadith" && !showAzkarCounter && (
+        {visitedTabs.has("hadith") && (
           <Suspense fallback={<ScreenLoader label="جارٍ تحميل كتب الحديث..." />}>
-            <div className="block relative min-h-screen w-full overflow-x-hidden">
+            <div className={activeTab === "hadith" && !showAzkarCounter ? "block relative min-h-screen w-full overflow-x-hidden" : "hidden"}>
               <HadithBooksScreen
+                isActive={activeTab === "hadith" && !showAzkarCounter}
                 onBack={handleBackToMain}
                 onHideNavChange={setHadithHideNav}
                 onOpenSakinaLibrary={() => setShowSakinaLibrary(true)}
@@ -1528,9 +1545,9 @@ function AuthenticatedApp() {
         )}
 
         {/* TAB: SAKEENAH AI */}
-        {activeTab === "sakeenah-ai" && !showAzkarCounter && (
+        {visitedTabs.has("sakeenah-ai") && (
           <div
-            className="block relative min-h-screen w-full overflow-x-hidden overflow-y-auto"
+            className={activeTab === "sakeenah-ai" && !showAzkarCounter ? "block relative min-h-screen w-full overflow-x-hidden overflow-y-auto" : "hidden"}
             data-clarity-mask="true"
             data-sakeenah-ai-surface="true"
           >
@@ -1560,9 +1577,9 @@ function AuthenticatedApp() {
         )}
 
         {/* TAB: SETTINGS */}
-        {activeTab === "settings" && !showAzkarCounter && (
+        {visitedTabs.has("settings") && (
           <Suspense fallback={<ScreenLoader label="جارٍ تحميل الإعدادات..." />}>
-            <div className="block">
+            <div className={activeTab === "settings" && !showAzkarCounter ? "block" : "hidden"}>
           <SettingsScreen
             cityName={cityName}
             cityLat={cityLat}
@@ -1619,8 +1636,8 @@ function AuthenticatedApp() {
           FLOATING BOTTOM NAVIGATION
           ═══════════════════════════════════════════════════════════════ */}
       {!showAzkarCounter &&
-        !quranHideNav &&
-        !hadithHideNav &&
+        !shouldShowQuranNav &&
+        !shouldShowHadithNav &&
         !showAsmaAlHusna &&
         activeTab !== "settings" &&
         activeTab !== "sakeenah-ai" && (

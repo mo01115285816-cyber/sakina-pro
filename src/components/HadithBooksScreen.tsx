@@ -45,8 +45,10 @@ import {
 } from "../types/hadith.types";
 import { HadithOfflineSearchService } from "../services/HadithOfflineSearchService";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
+import { getSmartCache, isSmartCacheStale, setSmartCache } from "@/services/smart-cache";
 
 interface HadithBooksScreenProps {
+  isActive?: boolean;
   onBack?: () => void;
   onHideNavChange?: (hide: boolean) => void;
   onOpenSakinaLibrary?: () => void;
@@ -57,6 +59,13 @@ const BOOKMARKS_STORAGE_KEY = "sakeenah_hadith_bookmarks_v1";
 const LAST_READ_STORAGE_KEY = "sakeenah_hadith_last_read_v1";
 const REPORTS_STORAGE_KEY = "sakeenah_hadith_reports_v1";
 const DISCLAIMER_STORAGE_KEY = "sakeenah_hadith_disclaimer_dismissed_v1";
+const HADITH_BOOKS_CACHE_KEY = "sakina:cache:hadith-books:v1";
+const HADITH_BOOKS_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
+
+function getCachedHadithBooks(): HadithBookInfo[] | null {
+  return getSmartCache<HadithBookInfo[]>(HADITH_BOOKS_CACHE_KEY)?.data ?? null;
+}
+
 const SAKINA_LIBRARY_GATE_IMAGE = "/images/sakina-library/sakina-library-gate.webp";
 
 async function readHadithJson<T>(response: Response): Promise<T> {
@@ -235,9 +244,9 @@ export function localizeHadithGrade(grade: string | undefined): string | undefin
     .replace(/\bMaudu\b/gi, "موضوع");
 }
 
-export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakinaLibrary }: HadithBooksScreenProps) {
+export default function HadithBooksScreen({ isActive = true, onBack, onHideNavChange, onOpenSakinaLibrary }: HadithBooksScreenProps) {
   // State: Books metadata
-  const [books, setBooks] = useState<HadithBookInfo[]>(FALLBACK_BOOKS);
+  const [books, setBooks] = useState<HadithBookInfo[]>(() => getCachedHadithBooks() ?? FALLBACK_BOOKS);
   const [loadingBooks, setLoadingBooks] = useState(false);
   const [booksError, setBooksError] = useState<string | null>(null);
 
@@ -316,13 +325,19 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
   const [isSearchScopeDropdownOpen, setIsSearchScopeDropdownOpen] = useState(false);
   const [downloadSuccessAnim, setDownloadSuccessAnim] = useState(false);
 
-  // Load books, bookmarks, last read, and reports on mount
+  // Restore local user state once; refresh public book metadata only while active.
   useEffect(() => {
-    fetchBooks();
     loadBookmarksFromStorage();
     loadLastReadFromStorage();
     loadReportsFromStorage();
   }, []);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const cached = getSmartCache<HadithBookInfo[]>(HADITH_BOOKS_CACHE_KEY);
+    if (cached && !isSmartCacheStale(cached, HADITH_BOOKS_CACHE_MAX_AGE_MS)) return;
+    void fetchBooks();
+  }, [isActive]);
 
   // Check offline status for loaded books
   const checkOfflineStats = useCallback(async (currentBooks: HadithBookInfo[] = books) => {
@@ -431,22 +446,26 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
 
   // 1. Fetch Books List from API
   const fetchBooks = async () => {
-    setLoadingBooks(true);
+    const hasVisibleBooks = books.length > 0;
+    setLoadingBooks(!hasVisibleBooks);
     setBooksError(null);
     try {
-      const res = await fetch("/api/hadith/books");
+      const res = await fetch("/api/hadith/books", { cache: "no-store" });
       if (res.ok) {
         const data = await readHadithJson<{ success?: boolean; books?: HadithBookInfo[] }>(res);
         if (data.success && Array.isArray(data.books)) {
+          setSmartCache(HADITH_BOOKS_CACHE_KEY, data.books);
           setBooks(data.books);
           checkOfflineStats(data.books);
           return;
         }
       }
+      setSmartCache(HADITH_BOOKS_CACHE_KEY, FALLBACK_BOOKS);
       setBooks(FALLBACK_BOOKS);
       checkOfflineStats(FALLBACK_BOOKS);
     } catch (err: any) {
       console.warn("Server books fetch failed, falling back to local book metadata:", err);
+      setSmartCache(HADITH_BOOKS_CACHE_KEY, FALLBACK_BOOKS);
       setBooks(FALLBACK_BOOKS);
       checkOfflineStats(FALLBACK_BOOKS);
     } finally {
@@ -1347,7 +1366,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
               </div>
             )}
 
-            {booksError && (
+            {booksError && books.length === 0 && (
               <div className="p-6 cut-crystal-satin border border-rose-300 text-rose-900 text-center space-y-3">
                 <p className="text-sm font-bold">{booksError}</p>
                 <button
@@ -1361,7 +1380,7 @@ export default function HadithBooksScreen({ onBack, onHideNavChange, onOpenSakin
             )}
 
             {/* Books Grid */}
-            {!loadingBooks && !booksError && (
+            {!loadingBooks && (!booksError || books.length > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredBooks.map((book) => {
                   const isDownloaded = downloadStats[book.id];

@@ -15,9 +15,17 @@ import {
 } from "lucide-react";
 import type { Reciter, Moshaf } from "@/types/quran";
 import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
+import { getSmartCache, isSmartCacheStale, setSmartCache } from "@/services/smart-cache";
 import QuranLiveBroadcast from "./QuranLiveBroadcast";
 import { RadioStation } from "@/types/radio";
 import type { RadioCaptureState } from "@/services/radioCaptureService";
+
+const RECITERS_CACHE_KEY = "sakina:cache:quran-reciters:v1";
+const RECITERS_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+
+function getCachedReciters(): Reciter[] | null {
+  return getSmartCache<Reciter[]>(RECITERS_CACHE_KEY)?.data ?? null;
+}
 
 // Robust offline fallback list of popular reciters to guarantee instant loading and prevent any blank/empty screen
 const FALLBACK_RECITERS: Reciter[] = [
@@ -204,6 +212,7 @@ const FALLBACK_RECITERS: Reciter[] = [
 ];
 
 interface Props {
+  isActive?: boolean;
   onSelectReciter: (reciter: Reciter, moshaf: Moshaf) => void;
 
   // Audio Player states for the bottom mini-player
@@ -228,6 +237,7 @@ interface Props {
 }
 
 export default function QuranRecitersScreen({
+  isActive = true,
   onSelectReciter,
   playingSurahId,
   isPlaying,
@@ -246,8 +256,8 @@ export default function QuranRecitersScreen({
   onModeChange,
   onOpenPureRecitations,
 }: Props) {
-  const [reciters, setReciters] = useState<Reciter[]>(FALLBACK_RECITERS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [reciters, setReciters] = useState<Reciter[]>(() => getCachedReciters() ?? FALLBACK_RECITERS);
+  const [isLoading, setIsLoading] = useState(() => !getCachedReciters());
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -268,13 +278,24 @@ export default function QuranRecitersScreen({
   }, [searchQuery, selectedFilter]);
 
   useEffect(() => {
+    if (!isActive) return;
+    const cached = getSmartCache<Reciter[]>(RECITERS_CACHE_KEY);
+    if (cached && !isSmartCacheStale(cached, RECITERS_CACHE_MAX_AGE_MS)) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchReciters = async () => {
+      const hasVisibleReciters = reciters.length > 0;
+      setIsLoading(!hasVisibleReciters);
       try {
         const res = await fetch(
           "https://www.mp3quran.net/api/v3/reciters?language=ar",
+          { cache: "no-store" },
         );
         const data = await res.json();
         if (data && Array.isArray(data.reciters)) {
+          setSmartCache(RECITERS_CACHE_KEY, data.reciters);
           setReciters(data.reciters);
         } else {
           console.error("Invalid reciters response format:", data);
@@ -286,7 +307,7 @@ export default function QuranRecitersScreen({
       }
     };
     fetchReciters();
-  }, []);
+  }, [isActive]);
 
   // Get unique moshaf names for the filter sheet
   const filterOptions = useMemo(() => {

@@ -26,9 +26,10 @@ import { RadioCaptureService, type RadioCaptureState } from "@/services/radioCap
 interface Props {
   onBack?: () => void;
   onHideNavChange?: (hide: boolean) => void;
+  isActive?: boolean;
 }
 
-const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavChange }: Props) {
+const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavChange, isActive = true }: Props) {
   // Master Mode: "listening" (audio, broadcast, reciters) or "reading" (gate layout)
   const [quranMode, setQuranMode] = useState<"listening" | "reading">("listening");
 
@@ -593,6 +594,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
           <>
             <div className={currentScreen === "reciters" ? "block w-full" : "hidden"}>
               <QuranRecitersScreen
+                isActive={isActive && currentScreen === "reciters"}
                 onSelectReciter={handleSelectReciter}
                 playingSurahId={playingSurahId}
                 isPlaying={isPlaying}
@@ -615,6 +617,7 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
 
             <div className={currentScreen === "pureRecitations" ? "block w-full" : "hidden"}>
               <QuranPureRecitationsScreen
+                isActive={isActive && currentScreen === "pureRecitations"}
                 onBack={handleBackToReciters}
                 onPlayTrack={handlePlayPureTrack}
                 currentlyPlayingId={playingSurahId || undefined}

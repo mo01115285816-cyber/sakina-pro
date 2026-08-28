@@ -4,9 +4,12 @@ import SakeenahLineSpinner from "@/components/SakeenahLineSpinner";
 import QuranSurahsScreen from "@/components/QuranSurahsScreen";
 import type { Moshaf, Reciter } from "@/types/quran";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
+import { getSmartCache, isSmartCacheStale, setSmartCache } from "@/services/smart-cache";
 
 const CATALOG_URL =
   "https://mo01115285816-cyber.github.io/quran-audio/catalog/manifest.json";
+const PURE_RECITATIONS_CACHE_KEY = "sakina:cache:pure-recitations:v1";
+const PURE_RECITATIONS_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
 const RECITER_IMAGE_PATHS: Record<string, string> = {
   "mohammed-siddiq-al-minshawi": publicAssetUrl(
@@ -87,6 +90,7 @@ export type PureAudioCatalog = {
 };
 
 interface Props {
+  isActive?: boolean;
   onBack: () => void;
   onPlayTrack: (
     reciter: PureAudioReciter,
@@ -174,7 +178,12 @@ function toStableReciterId(id: string) {
   return Math.abs(Array.from(id).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0)) || 1;
 }
 
+function getCachedPureCatalog() {
+  return getSmartCache<PureAudioCatalog>(PURE_RECITATIONS_CACHE_KEY)?.data ?? null;
+}
+
 export default function QuranPureRecitationsScreen({
+  isActive = true,
   onBack,
   onPlayTrack,
   currentlyPlayingId,
@@ -182,33 +191,41 @@ export default function QuranPureRecitationsScreen({
   onTriggerTimer,
   onReadSurah,
 }: Props) {
-  const [catalog, setCatalog] = useState<PureAudioCatalog | null>(null);
+  const [catalog, setCatalog] = useState<PureAudioCatalog | null>(() => getCachedPureCatalog());
   const [selectedReciterId, setSelectedReciterId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !getCachedPureCatalog());
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = async () => {
-    setIsLoading(true);
+    const hasVisibleCatalog = Boolean(getCachedPureCatalog() || catalog);
+    setIsLoading(!hasVisibleCatalog);
     setError(null);
     try {
-      const response = await fetch(CATALOG_URL, { cache: "no-cache" });
+      const response = await fetch(CATALOG_URL, { cache: "no-store" });
       if (!response.ok) throw new Error(`catalog_${response.status}`);
       const payload = normalizeCatalog(await response.json());
+      setSmartCache(PURE_RECITATIONS_CACHE_KEY, payload);
       setCatalog(payload);
       setSelectedReciterId((current) =>
         current && payload.reciters.some((reciter) => reciter.id === current) ? current : null,
       );
     } catch (loadError) {
       console.error("Failed to load pure recitations catalog", loadError);
-      setError("لم يتم نشر كتالوج التلاوات النقية حتى الآن.");
+      if (!hasVisibleCatalog) setError("لم يتم نشر كتالوج التلاوات النقية حتى الآن.");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!isActive) return;
+    const cached = getSmartCache<PureAudioCatalog>(PURE_RECITATIONS_CACHE_KEY);
+    if (cached && !isSmartCacheStale(cached, PURE_RECITATIONS_CACHE_MAX_AGE_MS)) {
+      setIsLoading(false);
+      return;
+    }
     void loadCatalog();
-  }, []);
+  }, [isActive]);
 
   const selectedReciter = useMemo(
     () => catalog?.reciters.find((reciter) => reciter.id === selectedReciterId) ?? null,
@@ -282,12 +299,12 @@ export default function QuranPureRecitationsScreen({
           </section>
         )}
 
-        {isLoading ? (
+        {isLoading && !catalog ? (
           <div className="px-6 py-16 text-center flex flex-col items-center gap-3">
             <SakeenahLineSpinner size={40} color="#b88a4f" label="جارٍ تحميل كتالوج التلاوات النقية" />
             <p className="text-[13px] text-[#7f6a55] font-bold">جاري تجهيز مكتبة التلاوات...</p>
           </div>
-        ) : error || !catalog || catalog.reciters.length === 0 ? (
+        ) : error && !catalog ? (
           <section className="px-6 py-8">
             <div className="cut-crystal-panel rounded-[28px] p-6 text-center shadow-sm">
               <WifiOff size={25} className="mx-auto text-[#b88a4f] mb-3" />
