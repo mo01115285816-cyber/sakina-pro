@@ -8,6 +8,11 @@ const REMOTE_ZIP_URL = 'https://github.com/mo01115285816-cyber/sakina/releases/d
 const WEB_QCF_FONT_BASE_URL = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2';
 const LOCAL_WEB_QCF_SAMPLE_PAGES = new Set([1, 2]);
 
+// Timeout and retry constants optimized for Android
+const WRITE_OPERATION_TIMEOUT = 60000; // 60 seconds per write
+const MAX_WRITE_RETRIES = 3;
+const CHUNK_THRESHOLD = 1024 * 1024; // 1 MB (reduced from 2 MB to minimize memory pressure)
+
 type Platform = 'web' | 'native';
 
 function getPlatform(): Platform {
@@ -21,8 +26,6 @@ function getPlatform(): Platform {
 // Lazy-load the Zip plugin only on native platforms to avoid Vite web bundle errors
 async function getZipPlugin(): Promise<any> {
   const moduleName = '@capgo/capacitor-zip';
-  // Use indirect dynamic import to prevent Vite from pre-bundling this
-  // native-only plugin into the web bundle.
   const mod = await (Function('m', 'return import(m)')(moduleName));
   return mod.CapacitorZip;
 }
@@ -42,9 +45,12 @@ function fontId(pageNumber: number): string {
   return `QCF_P${String(pageNumber).padStart(3, '0')}`;
 }
 
+/**
+ * Convert Uint8Array to base64 string with chunked processing to avoid stack overflow
+ */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = '';
   const bytes = new Uint8Array(buffer);
+  let binary = '';
   const chunkSize = 8192;
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
@@ -79,11 +85,21 @@ async function fetchFontZipWithRetry(): Promise<Response> {
   let lastError: unknown = new Error('تعذر الاتصال بخادم الخطوط');
   for (let attempt = 0; attempt <= MAX_DOWNLOAD_RETRIES; attempt += 1) {
     try {
-      const response = await fetch(REMOTE_ZIP_URL);
-      if (response.ok) return response;
-      lastError = new Error(`تعذر الاتصال بخادم الخطوط (HTTP ${response.status})`);
-      // لا تُعيد المحاولة على 4xx (أخطاء العميل)
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+      
+      try {
+        const response = await fetch(REMOTE_ZIP_URL, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) return response;
+        lastError = new Error(`تعذر الاتصال بخادم الخطوط (HTTP ${response.status})`);
+        // لا تُعيد المحاولة على 4xx (أخطاء العميل)
+        if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        throw e;
+      }
     } catch (error) {
       lastError = error;
     }
@@ -95,8 +111,54 @@ async function fetchFontZipWithRetry(): Promise<Response> {
   throw lastError;
 }
 
-/** حجم التجميع قبل الكتابة على القرص — يوازن بين استهلاك الذاكرة وكفاءة الكتابة. */
-const CHUNK_THRESHOLD = 2 * 1024 * 1024; // 2 MB
+/**
+ * Write chunk with timeout and retry logic to handle stalled writes on Android
+ */
+async function writeChunkWithTimeout(
+  path: string,
+  data: string,
+  retryCount = 0
+): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WRITE_OPERATION_TIMEOUT);
+
+  try {
+    // Use Promise wrapper to enforce timeout
+    await Promise.race([
+      Filesystem.appendFile({
+        path,
+        data,
+        directory: Directory.Data,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('WRITE_TIMEOUT')), WRITE_OPERATION_TIMEOUT)
+      ),
+    ]);
+    clearTimeout(timeoutId);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    
+    // Retry on timeout with exponential backoff
+    if ((err instanceof Error && err.message === 'WRITE_TIMEOUT') || err === 'WRITE_TIMEOUT') {
+      if (retryCount < MAX_WRITE_RETRIES) {
+        const retryDelay = Math.min(5000, 500 * 2 ** retryCount);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        return writeChunkWithTimeout(path, data, retryCount + 1);
+      }
+      throw new Error(`فشل كتابة الملف بعد ${MAX_WRITE_RETRIES} محاولات - انقطع الاتصال أو مشكلة في الجهاز`);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Trigger garbage collection hint on Android to free memory between chunks
+ */
+function triggerGarbageCollection(): void {
+  if (getPlatform() === 'native' && typeof (global as any).gc === 'function') {
+    (global as any).gc();
+  }
+}
 
 export const QcfFontStorage = {
   getPlatform,
@@ -173,24 +235,28 @@ export const QcfFontStorage = {
 
       const reader = response.body?.getReader();
 
-      // كتابة متدفقة chunk-by-chunk مع تجميع حتى CHUNK_THRESHOLD (2 MB)
-      // قبل كل عملية appendFile — هذا يخفض عدد عمليات الكتابة عبر الـ bridge
-      // من آلاف العمليات إلى ~49 عملية فقط، ويحافظ على استهلاك ذاكرة منخفض (~3 MB).
+      // Write streaming chunk-by-chunk with timeout protection
+      // Each chunk is written directly without prolonged Base64 conversion to avoid memory leaks
       const pendingChunk = new Uint8Array(CHUNK_THRESHOLD);
       let pendingOffset = 0;
+      let writeCount = 0;
 
       const flushPending = async () => {
         if (pendingOffset === 0) return;
-        // مهم: slice() تنشئ نسخة جديدة بـ ArrayBuffer مستقل بحجم pendingOffset فقط.
-        // لا تستخدم subarray().buffer لأنه يرجع الـ ArrayBuffer الكامل (2 MB) مع أصفار فارغة
-        // تالف الـ zip. slice() هنا تنسخ فقط البيانات الفعلية بدون أصفار.
+        
+        // Slice creates a new ArrayBuffer with only the actual data
         const actualData = pendingChunk.slice(0, pendingOffset);
         const chunkBase64 = arrayBufferToBase64(actualData.buffer);
-        await Filesystem.appendFile({
-          path: zipTempPath,
-          data: chunkBase64,
-          directory: Directory.Data,
-        });
+        
+        // Write with timeout and retry logic
+        await writeChunkWithTimeout(zipTempPath, chunkBase64);
+        writeCount++;
+        
+        // Trigger GC every 20 writes to prevent memory accumulation
+        if (writeCount % 20 === 0) {
+          triggerGarbageCollection();
+        }
+        
         pendingOffset = 0;
       };
 
@@ -205,14 +271,15 @@ export const QcfFontStorage = {
             if (pendingOffset + value.length > CHUNK_THRESHOLD) {
               await flushPending();
             }
+            
             // إذا كانت القطعة نفسها أكبر من CHUNK_THRESHOLD (نادر)، اكتبها مباشرة
             if (value.length >= CHUNK_THRESHOLD) {
               const directBase64 = arrayBufferToBase64(value.buffer);
-              await Filesystem.appendFile({
-                path: zipTempPath,
-                data: directBase64,
-                directory: Directory.Data,
-              });
+              await writeChunkWithTimeout(zipTempPath, directBase64);
+              writeCount++;
+              if (writeCount % 20 === 0) {
+                triggerGarbageCollection();
+              }
             } else {
               pendingChunk.set(value, pendingOffset);
               pendingOffset += value.length;
@@ -231,12 +298,7 @@ export const QcfFontStorage = {
         const blob = await response.blob();
         const buffer = await blob.arrayBuffer();
         const fullBase64 = arrayBufferToBase64(buffer);
-        await Filesystem.writeFile({
-          path: zipTempPath,
-          data: fullBase64,
-          directory: Directory.Data,
-          recursive: true,
-        });
+        await writeChunkWithTimeout(zipTempPath, fullBase64);
       }
 
       onProgress?.(65, 'جاري حفظ الحزمة المضغوطة في ذاكرة الهاتف الدائمة...');
