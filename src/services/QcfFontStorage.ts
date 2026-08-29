@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { CapacitorZip } from '@capgo/capacitor-zip';
 import localforage from 'localforage';
 
 const FONTS_DIR_NAME = 'qcf-fonts';
@@ -21,13 +22,6 @@ function getPlatform(): Platform {
   } catch {
     return 'web';
   }
-}
-
-// Lazy-load the Zip plugin only on native platforms to avoid Vite web bundle errors
-async function getZipPlugin(): Promise<any> {
-  const moduleName = '@capgo/capacitor-zip';
-  const mod = await (Function('m', 'return import(m)')(moduleName));
-  return mod.CapacitorZip;
 }
 
 // Create a dedicated IndexedDB store for permanent offline font caching on Web (PWA)
@@ -306,7 +300,10 @@ export const QcfFontStorage = {
       onProgress?.(75, 'جاري فك ضغط وتجهيز 604 صفحة للمصحف الشريف...');
 
       // Unzip in Directory.Data on Android and iOS
-      const Zip = await getZipPlugin();
+      // CapacitorZip is statically imported at the top of the file.
+      // It registers a no-op web implementation via @capgo/capacitor-zip,
+      // so this is safe on both web and native.
+      const Zip = CapacitorZip;
       const zipFileUri = await Filesystem.getUri({
         path: zipTempPath,
         directory: Directory.Data,

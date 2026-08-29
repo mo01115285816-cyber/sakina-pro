@@ -49,8 +49,10 @@ export function useQcfFont(pageNumber: number): boolean {
       .catch((err) => {
         if (!cancelled) {
           console.error(`فشل جلب أو تركيب خط الصفحة ${pageNumber}:`, err);
-          // Still mark as loaded to prevent indefinite loading state
-          if (!cancelled) setIsLoaded(true);
+          // لا تعتبر الخط محمّلاً عند الفشل — اتركه على false ليظهر التطبيق
+          // رسالة "جاري تحميل خط المصحف" الصادقة بدلاً من رسم مربعات tofu.
+          // هذا يمنع القناع الخفي الذي كان يرسم النص بدون خط عند الفشل.
+          if (!cancelled) setIsLoaded(false);
         }
       });
 
