@@ -181,8 +181,11 @@ export const QcfFontStorage = {
 
       const flushPending = async () => {
         if (pendingOffset === 0) return;
-        const slice = pendingChunk.subarray(0, pendingOffset);
-        const chunkBase64 = arrayBufferToBase64(slice.buffer);
+        // مهم: slice() تنشئ نسخة جديدة بـ ArrayBuffer مستقل بحجم pendingOffset فقط.
+        // لا تستخدم subarray().buffer لأنه يرجع الـ ArrayBuffer الكامل (2 MB) مع أصفار فارغة
+        // تالف الـ zip. slice() هنا تنسخ فقط البيانات الفعلية بدون أصفار.
+        const actualData = pendingChunk.slice(0, pendingOffset);
+        const chunkBase64 = arrayBufferToBase64(actualData.buffer);
         await Filesystem.appendFile({
           path: zipTempPath,
           data: chunkBase64,
