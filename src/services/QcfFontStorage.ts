@@ -166,18 +166,26 @@ export const QcfFontStorage = {
       const flag = localStorage.getItem(EXTRACTION_FLAG_KEY);
       if (flag !== 'true') return false;
 
-      // Physical integrity check for page 1 font file in device storage
-      const samplePath = `${FONTS_DIR_NAME}/${fontFileName(1)}`;
-      try {
-        const stat = await Filesystem.stat({
-          path: samplePath,
-          directory: Directory.Data,
-        });
-        return stat.size >= 30000;
-      } catch {
-        localStorage.removeItem(EXTRACTION_FLAG_KEY);
-        return false;
+      // تحقق من 3 ملفات موزعة على المصحف كله (البداية، الوسط، النهاية)
+      // بدلاً من ملف واحد فقط — هذا يضمن أن الـ unzip اكتمل بنجاح لكل المصحف
+      const samplePages = [1, 300, 604];
+      for (const page of samplePages) {
+        const samplePath = `${FONTS_DIR_NAME}/${fontFileName(page)}`;
+        try {
+          const stat = await Filesystem.stat({
+            path: samplePath,
+            directory: Directory.Data,
+          });
+          if (stat.size < 30000) {
+            localStorage.removeItem(EXTRACTION_FLAG_KEY);
+            return false;
+          }
+        } catch {
+          localStorage.removeItem(EXTRACTION_FLAG_KEY);
+          return false;
+        }
       }
+      return true;
     } catch {
       return false;
     }

@@ -132,8 +132,8 @@ export async function prefetchAllQcfFonts(
       onProgress?.(100, 'اكتمل تجهيز كل خطوط المصحف في الذاكرة ✅');
     } catch (err) {
       console.error('خطأ حرج في تحميل خطوط المصحف:', err);
-      // Mark as attempted even if failed - will fall back to on-demand loading
-      isPrefetched = true;
+      // لا تعتبر الـ prefetch مكتمل عند الفشل — اسمح بإعادة المحاولة
+      // عند فتح التطبيق مرة أخرى. علامة isPrefetched=true كانت تخفي المشكلة.
       throw err;
     }
   })();
