@@ -3,13 +3,14 @@ import { QcfFontStorage } from '@/services/QcfFontStorage';
 
 const loadedFonts = new Map<string, string>();
 const TOTAL_PAGES = 604;
-const PREFETCH_BATCH_SIZE = 20; // تحميل 20 خط في المرة لتجنب memory spike
+const PREFETCH_BATCH_SIZE = 15; // Load 15 fonts per batch (balanced for memory)
 let prefetchPromise: Promise<void> | null = null;
 let isPrefetched = false;
 
 export function prefetchQcfFont(pageNumber: number): void {
   const family = QcfFontStorage.fontId(pageNumber);
   if (loadedFonts.has(family)) return;
+  
   QcfFontStorage.readFontAsBlobUrl(pageNumber)
     .then((url) => {
       const fontFace = new FontFace(family, `url(${url}) format('woff2')`, { display: 'block' });
@@ -18,7 +19,9 @@ export function prefetchQcfFont(pageNumber: number): void {
         loadedFonts.set(family, url);
       });
     })
-    .catch(() => {});
+    .catch(() => {
+      // Silently fail - will retry on page load
+    });
 }
 
 export function useQcfFont(pageNumber: number): boolean {
@@ -40,11 +43,15 @@ export function useQcfFont(pageNumber: number): boolean {
         const fontFace = new FontFace(fontFamily, `url(${url}) format('woff2')`, { display: 'block' });
         const loaded = await fontFace.load();
         document.fonts.add(loaded);
-        loadedFonts.set(family, url);
+        loadedFonts.set(fontFamily, url);
         if (!cancelled) setIsLoaded(true);
       })
       .catch((err) => {
-        if (!cancelled) console.error(`فشل جلب أو تركيب خط الصفحة ${pageNumber}:`, err);
+        if (!cancelled) {
+          console.error(`فشل جلب أو تركيب خط الصفحة ${pageNumber}:`, err);
+          // Still mark as loaded to prevent indefinite loading state
+          if (!cancelled) setIsLoaded(true);
+        }
       });
 
     return () => {
@@ -88,28 +95,45 @@ export async function prefetchAllQcfFonts(
 
   // إذا كان التحميل المسبق جارياً بالفعل، انتظر اكتماله
   if (prefetchPromise) {
-    return prefetchPromise;
+    await prefetchPromise;
+    return;
   }
 
   prefetchPromise = (async () => {
-    onProgress?.(0, 'جاري تجهيز خطوط المصحف في الذاكرة...');
+    try {
+      onProgress?.(0, 'جاري تجهيز خطوط المصحف في الذاكرة...');
 
-    for (let batchStart = 1; batchStart <= TOTAL_PAGES; batchStart += PREFETCH_BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + PREFETCH_BATCH_SIZE - 1, TOTAL_PAGES);
-      const batchPromises: Promise<void>[] = [];
+      // Load all 604 fonts in batches
+      for (let batchStart = 1; batchStart <= TOTAL_PAGES; batchStart += PREFETCH_BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + PREFETCH_BATCH_SIZE - 1, TOTAL_PAGES);
+        const batchPromises: Promise<void>[] = [];
 
-      for (let page = batchStart; page <= batchEnd; page++) {
-        batchPromises.push(prefetchSingleFont(page));
+        // Load each font in the batch in parallel
+        for (let page = batchStart; page <= batchEnd; page++) {
+          batchPromises.push(prefetchSingleFont(page).catch((err) => {
+            // Log but don't throw - continue with other fonts
+            console.warn(`تحذير: فشل تحميل خط الصفحة ${page}:`, err);
+          }));
+        }
+
+        // Wait for entire batch to complete before moving to next
+        await Promise.all(batchPromises);
+
+        const percent = Math.floor((batchEnd / TOTAL_PAGES) * 100);
+        onProgress?.(percent, `تم تجهيز ${batchEnd} من ${TOTAL_PAGES} خط المصحف...`);
+
+        // Small delay between batches to avoid memory spikes
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      await Promise.all(batchPromises);
-
-      const percent = Math.floor((batchEnd / TOTAL_PAGES) * 100);
-      onProgress?.(percent, `تم تجهيز ${batchEnd} صفحة من خطوط المصحف...`);
+      isPrefetched = true;
+      onProgress?.(100, 'اكتمل تجهيز كل خطوط المصحف في الذاكرة ✅');
+    } catch (err) {
+      console.error('خطأ حرج في تحميل خطوط المصحف:', err);
+      // Mark as attempted even if failed - will fall back to on-demand loading
+      isPrefetched = true;
+      throw err;
     }
-
-    isPrefetched = true;
-    onProgress?.(100, 'اكتمل تجهيز كل خطوط المصحف في الذاكرة');
   })();
 
   try {
@@ -121,7 +145,11 @@ export async function prefetchAllQcfFonts(
 
 async function prefetchSingleFont(pageNumber: number): Promise<void> {
   const family = QcfFontStorage.fontId(pageNumber);
-  if (loadedFonts.has(family)) return;
+  
+  // Skip if already loaded
+  if (loadedFonts.has(family)) {
+    return;
+  }
 
   try {
     const url = await QcfFontStorage.readFontAsBlobUrl(pageNumber);
@@ -129,8 +157,10 @@ async function prefetchSingleFont(pageNumber: number): Promise<void> {
     const loaded = await fontFace.load();
     document.fonts.add(loaded);
     loadedFonts.set(family, url);
-  } catch {
-    // تخطّي الخطوط الفاشلة صامتاً — ستُحاول useQcfFont مرة أخرى عند فتح الصفحة
+  } catch (err) {
+    // Don't throw - let other fonts continue loading
+    // This font will be loaded on-demand when user opens that page
+    console.warn(`تحذير: تعذر تحميل خط الصفحة ${pageNumber} في المرة المسبقة، سيتم تحميله عند فتح الصفحة`, err);
   }
 }
 
@@ -139,4 +169,21 @@ async function prefetchSingleFont(pageNumber: number): Promise<void> {
  */
 export function isFontsPrefetched(): boolean {
   return isPrefetched;
+}
+
+/**
+ * Get count of successfully loaded fonts
+ */
+export function getLoadedFontCount(): number {
+  return loadedFonts.size;
+}
+
+/**
+ * Reset font cache (for debugging or clearing)
+ */
+export function resetFontCache(): void {
+  loadedFonts.clear();
+  isPrefetched = false;
+  prefetchPromise = null;
+  document.fonts.clear?.();
 }
