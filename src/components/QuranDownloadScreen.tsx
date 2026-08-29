@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, Download } from "lucide-react";
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { QcfFontStorage } from "@/services/QcfFontStorage";
+import { prefetchAllQcfFonts } from "@/hooks/useQcfFont";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
 
 interface Props {
@@ -13,7 +14,10 @@ interface Props {
 
 function getDownloadStage(progress: number, rawStatus: string): string {
   if (progress >= 100) return "اكتمل تجهيز المصحف والتفسير";
-  if (progress >= 85) {
+  if (progress >= 90) {
+    return "جاري تجهيز خطوط المصحف في الذاكرة";
+  }
+  if (progress >= 75) {
     return rawStatus.includes("خط") || rawStatus.includes("تجهيز")
       ? "جاري تجهيز المصحف للعمل دون اتصال"
       : "جاري إنهاء تنزيل الملفات";
@@ -32,23 +36,30 @@ export default function QuranDownloadScreen({ onClose, onDownloaded }: Props) {
     setProgress(0);
     setStatusText("جاري تجهيز التنزيل");
     try {
-      // المرحلة الأولى: المصحف ثم ابن كثير — 0% إلى 85% تقريبًا
+      // المرحلة الأولى: المصحف ثم ابن كثير — 0% إلى 75%
       await QuranOfflineService.downloadQuran((percent, status) => {
-        setProgress(Math.floor(percent * 0.85));
+        setProgress(Math.floor(percent * 0.75));
         setStatusText(status);
       });
 
-      // المرحلة الثانية: تجهيز خطوط QCF على الأجهزة الأصلية — 85% إلى 100%
+      // المرحلة الثانية: استخراج خطوط QCF — 75% إلى 90%
       const isAlreadyExtracted = await QcfFontStorage.isExtracted();
       if (!isAlreadyExtracted) {
         await QcfFontStorage.extractFonts((fontPercent, fontStatus) => {
-          setProgress(85 + Math.floor(fontPercent * 0.15));
+          setProgress(75 + Math.floor(fontPercent * 0.15));
           setStatusText(fontStatus);
         });
       } else {
-        setProgress(100);
-        setStatusText("اكتمل تجهيز المصحف والتفسير");
+        setProgress(90);
+        setStatusText("خطوط المصحف مستخرجة مسبقاً");
       }
+
+      // المرحلة الثالثة: تحميل كل الخطوط في الذاكرة — 90% إلى 100%
+      // هذا يضمن أن المستخدم لن يرى "جاري تحميل خط المصحف" عند فتح أي صفحة
+      await prefetchAllQcfFonts((prefetchPercent, prefetchStatus) => {
+        setProgress(90 + Math.floor(prefetchPercent * 0.10));
+        setStatusText(prefetchStatus);
+      });
 
       window.setTimeout(() => {
         onDownloaded();

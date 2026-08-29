@@ -20,6 +20,7 @@ import QuranPureRecitationsScreen, {
 import { QuranOfflineService } from "@/services/QuranOfflineService";
 import { RadioMediaService } from "@/services/RadioMediaService";
 import { QuranMediaService } from "@/services/QuranMediaService";
+import { prefetchAllQcfFonts, isFontsPrefetched } from "@/hooks/useQcfFont";
 import { publicAssetUrl } from "@/utils/publicAssetUrl";
 import { RadioCaptureService, type RadioCaptureState } from "@/services/radioCaptureService";
 
@@ -68,6 +69,13 @@ const QuranTabScreen = React.memo(function QuranTabScreen({ onBack, onHideNavCha
   useEffect(() => {
     QuranOfflineService.isDownloaded().then(downloaded => {
       setIsQuranDownloaded(downloaded);
+      // للمستخدمين العائدين: prefetch الخطوط في الذاكرة تلقائياً عند فتح تبويب القرآن
+      // إذا كانت الخطوط مستخرجة على القرص لكن لم تُحمَّل في الذاكرة بعد
+      if (downloaded && !isFontsPrefetched()) {
+        prefetchAllQcfFonts().catch((err) => {
+          console.warn('Background font prefetch failed:', err);
+        });
+      }
     });
   }, []);
 

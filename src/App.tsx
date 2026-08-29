@@ -393,28 +393,40 @@ function AuthenticatedApp() {
     };
   }, [currentUser, isAuthReady, pendingSharedToken]);
 
-  // Check only capabilities required by the prayer scheduler. Battery
-  // optimization exemption and vendor auto-start remain optional OS settings.
-  // On Android this also verifies exact alarms; on the web that capability is not applicable.
+  // طلب أذونات الصلاة تلقائياً بعد اكتمال إذن الموقع.
+  // هذا يضمن أن التطبيق يطلب كل الأذونات اللازمة للإشعارات والأذان
+  // بدون انتظار تفاعل المستخدم مع BatteryOptimizationModal.
   useEffect(() => {
-    async function checkPrayerCapabilities() {
+    async function requestPrayerPermissions() {
       try {
         if (!locationPermissionFlowDone) return;
 
+        // 1. طلب إذن الإشعارات (POST_NOTIFICATIONS على Android 13+)
         const notificationStatus = await PrayerNotificationsService.getPermissionStatus();
+        if (notificationStatus !== 'granted') {
+          await PrayerNotificationsService.requestPermission();
+        }
+
+        // 2. فحص إذن الجداول الدقيقة (SCHEDULE_EXACT_ALARM على Android 12+)
         const { PrayerAlarmService } = await import('@/services/PrayerAlarmService');
         const exactAlarmAvailable = await PrayerAlarmService.canScheduleExactAlarms();
-        if (notificationStatus !== 'granted' || !exactAlarmAvailable) {
+
+        // 3. إذا كان إذن الجداول الدقيقة غير متاح، اعرض الـ modal لإرشاد المستخدم
+        // (هذا الإذن يتطلب فتح الإعدادات يدوياً — لا يمكن طلبه برمجياً)
+        if (!exactAlarmAvailable) {
           setShowBatteryModal(true);
         }
+
+        // 4. تحديث permissionRevision لإعادة فحص الحالة
+        setPermissionRevision((prev) => prev + 1);
       } catch (error) {
-        console.warn('Prayer capability check failed:', error);
+        console.warn('Prayer permission request failed:', error);
       }
     }
 
-    const timer = setTimeout(checkPrayerCapabilities, 3000);
+    const timer = setTimeout(requestPrayerPermissions, 2000);
     return () => clearTimeout(timer);
-  }, [locationPermissionFlowDone, permissionRevision]);
+  }, [locationPermissionFlowDone]);
 
   // Preload QCF fonts for all app verses (splash, home prayer reflections, settings)
   // at startup so verses render instantly with no flash.
@@ -491,16 +503,29 @@ function AuthenticatedApp() {
   }, [activeTab]);
 
   // إعادة ضبط التمرير إلى الأعلى عند كل تغيير للتبويب النشط.
+  // useLayoutEffect يُستدعى بعد رسم DOM مباشرة (قبل أن يرى المستخدم الصفحة)،
+  // و requestAnimationFrame يضمن أن scrollTo يحدث بعد اكتمال رسم الصفحة الجديدة.
   // هذا يضمن عزل تام لحالة التمرير بين الصفحات: كل صفحة تبدأ من الأعلى دائماً.
+  const prevTabRef = useRef<TabType>(activeTab);
+  const prevAzkarRef = useRef<boolean>(showAzkarCounter);
   useEffect(() => {
-    window.scrollTo(0, 0);
-    // اضبط أي حاويات تمرير داخلية قد تكون تُركت في موضع سابق
-    const scrollContainers = document.querySelectorAll('[data-scroll-container]');
-    scrollContainers.forEach((container) => {
-      if (container instanceof HTMLElement) {
-        container.scrollTop = 0;
-      }
+    // فقط عند تغيير التبويب فعلياً (ليس عند كل re-render)
+    if (prevTabRef.current === activeTab && prevAzkarRef.current === showAzkarCounter) return;
+    prevTabRef.current = activeTab;
+    prevAzkarRef.current = showAzkarCounter;
+
+    // استخدم requestAnimationFrame لتأخير scrollTo حتى بعد رسم الصفحة الجديدة
+    const rafId = requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      // أيضاً اضبط أي حاويات تمرير داخلية
+      const scrollContainers = document.querySelectorAll('[data-scroll-container]');
+      scrollContainers.forEach((container) => {
+        if (container instanceof HTMLElement) {
+          container.scrollTop = 0;
+        }
+      });
     });
+    return () => cancelAnimationFrame(rafId);
   }, [activeTab, showAzkarCounter]);
 
   useEffect(() => {
