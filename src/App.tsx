@@ -490,6 +490,19 @@ function AuthenticatedApp() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [activeTab]);
 
+  // إعادة ضبط التمرير إلى الأعلى عند كل تغيير للتبويب النشط.
+  // هذا يضمن عزل تام لحالة التمرير بين الصفحات: كل صفحة تبدأ من الأعلى دائماً.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    // اضبط أي حاويات تمرير داخلية قد تكون تُركت في موضع سابق
+    const scrollContainers = document.querySelectorAll('[data-scroll-container]');
+    scrollContainers.forEach((container) => {
+      if (container instanceof HTMLElement) {
+        container.scrollTop = 0;
+      }
+    });
+  }, [activeTab, showAzkarCounter]);
+
   useEffect(() => {
     let disposed = false;
 

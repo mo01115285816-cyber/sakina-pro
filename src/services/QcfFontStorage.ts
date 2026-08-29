@@ -69,6 +69,35 @@ function nativePathFromUri(uri: string): string {
   return uri;
 }
 
+/**
+ * Helper: تنزيل حزمة الخطوط مع إعادة المحاولة عند فشل الشبكة.
+ * يحاول حتى MAX_DOWNLOAD_RETRIES محاولات مع exponential backoff.
+ * يعيد Response ناجح فقط، أو يُلقي استثناء بعد نفاد المحاولات.
+ */
+const MAX_DOWNLOAD_RETRIES = 4;
+async function fetchFontZipWithRetry(): Promise<Response> {
+  let lastError: unknown = new Error('تعذر الاتصال بخادم الخطوط');
+  for (let attempt = 0; attempt <= MAX_DOWNLOAD_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(REMOTE_ZIP_URL);
+      if (response.ok) return response;
+      lastError = new Error(`تعذر الاتصال بخادم الخطوط (HTTP ${response.status})`);
+      // لا تُعيد المحاولة على 4xx (أخطاء العميل)
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < MAX_DOWNLOAD_RETRIES) {
+      const delay = Math.min(8000, 700 * 2 ** attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
+/** حجم التجميع قبل الكتابة على القرص — يوازن بين استهلاك الذاكرة وكفاءة الكتابة. */
+const CHUNK_THRESHOLD = 2 * 1024 * 1024; // 2 MB
+
 export const QcfFontStorage = {
   getPlatform,
 
@@ -128,55 +157,86 @@ export const QcfFontStorage = {
     try {
       onProgress?.(15, 'جاري تنزيل حزمة خطوط المصحف الشريف (97 ميجابايت)...');
 
-      // Fetch the compressed package directly from GitHub Releases CDN
-      const response = await fetch(REMOTE_ZIP_URL);
-      if (!response.ok) {
-        throw new Error(`تعذر الاتصال بخادم الخطوط (HTTP ${response.status})`);
-      }
+      // تنزيل الحزمة من GitHub Releases CDN مع إعادة المحاولة عند فشل الشبكة
+      const response = await fetchFontZipWithRetry();
 
       const contentLengthHeader = response.headers.get('content-length');
       const totalBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
       let downloadedBytes = 0;
 
+      // امسح أي ملف سابق بنفس الاسم قبل بدء الكتابة المتدفقة
+      try {
+        await Filesystem.deleteFile({ path: zipTempPath, directory: Directory.Data });
+      } catch {
+        // الملف قد لا يكون موجوداً — تجاهل بصمت
+      }
+
       const reader = response.body?.getReader();
-      const chunks: Uint8Array[] = [];
+
+      // كتابة متدفقة chunk-by-chunk مع تجميع حتى CHUNK_THRESHOLD (2 MB)
+      // قبل كل عملية appendFile — هذا يخفض عدد عمليات الكتابة عبر الـ bridge
+      // من آلاف العمليات إلى ~49 عملية فقط، ويحافظ على استهلاك ذاكرة منخفض (~3 MB).
+      const pendingChunk = new Uint8Array(CHUNK_THRESHOLD);
+      let pendingOffset = 0;
+
+      const flushPending = async () => {
+        if (pendingOffset === 0) return;
+        const slice = pendingChunk.subarray(0, pendingOffset);
+        const chunkBase64 = arrayBufferToBase64(slice.buffer);
+        await Filesystem.appendFile({
+          path: zipTempPath,
+          data: chunkBase64,
+          directory: Directory.Data,
+        });
+        pendingOffset = 0;
+      };
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           if (value) {
-            chunks.push(value);
             downloadedBytes += value.length;
+
+            // أضف القطعة إلى buffer المؤقت؛ اكتب إذا امتلأ
+            if (pendingOffset + value.length > CHUNK_THRESHOLD) {
+              await flushPending();
+            }
+            // إذا كانت القطعة نفسها أكبر من CHUNK_THRESHOLD (نادر)، اكتبها مباشرة
+            if (value.length >= CHUNK_THRESHOLD) {
+              const directBase64 = arrayBufferToBase64(value.buffer);
+              await Filesystem.appendFile({
+                path: zipTempPath,
+                data: directBase64,
+                directory: Directory.Data,
+              });
+            } else {
+              pendingChunk.set(value, pendingOffset);
+              pendingOffset += value.length;
+            }
+
             if (totalBytes > 0) {
               const fetchPercent = 15 + Math.floor((downloadedBytes / totalBytes) * 45); // 15% -> 60%
               onProgress?.(fetchPercent, `تنزيل الخطوط: ${Math.round((downloadedBytes / 1024 / 1024) * 10) / 10} ميجا / ${Math.round((totalBytes / 1024 / 1024) * 10) / 10} ميجا...`);
             }
           }
         }
+        // اكتب أي بقايا متبقية في buffer
+        await flushPending();
       } else {
+        // Fallback: استخدم blob دفعة واحدة (نادراً ما يُستخدم — فقط إذا لم يتوفر reader)
         const blob = await response.blob();
-        chunks.push(new Uint8Array(await blob.arrayBuffer()));
+        const buffer = await blob.arrayBuffer();
+        const fullBase64 = arrayBufferToBase64(buffer);
+        await Filesystem.writeFile({
+          path: zipTempPath,
+          data: fullBase64,
+          directory: Directory.Data,
+          recursive: true,
+        });
       }
 
       onProgress?.(65, 'جاري حفظ الحزمة المضغوطة في ذاكرة الهاتف الدائمة...');
-
-      const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-      const combinedBuffer = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const c of chunks) {
-        combinedBuffer.set(c, offset);
-        offset += c.length;
-      }
-
-      const zipBase64 = arrayBufferToBase64(combinedBuffer.buffer);
-
-      await Filesystem.writeFile({
-        path: zipTempPath,
-        data: zipBase64,
-        directory: Directory.Data,
-        recursive: true,
-      });
 
       onProgress?.(75, 'جاري فك ضغط وتجهيز 604 صفحة للمصحف الشريف...');
 
