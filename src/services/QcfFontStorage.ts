@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileTransfer } from '@capacitor/file-transfer';
 import { CapacitorZip } from '@capgo/capacitor-zip';
 import localforage from 'localforage';
 
@@ -221,86 +222,54 @@ export const QcfFontStorage = {
     try {
       onProgress?.(15, 'جاري تنزيل حزمة خطوط المصحف الشريف (97 ميجابايت)...');
 
-      // تنزيل الحزمة من GitHub Releases CDN مع إعادة المحاولة عند فشل الشبكة
-      const response = await fetchFontZipWithRetry();
-
-      const contentLengthHeader = response.headers.get('content-length');
-      const totalBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0;
-      let downloadedBytes = 0;
-
-      // امسح أي ملف سابق بنفس الاسم قبل بدء الكتابة المتدفقة
+      // امسح أي ملف سابق بنفس الاسم قبل بدء التنزيل
       try {
         await Filesystem.deleteFile({ path: zipTempPath, directory: Directory.Data });
       } catch {
         // الملف قد لا يكون موجوداً — تجاهل بصمت
       }
 
-      const reader = response.body?.getReader();
+      // الحل الجذري: استخدام FileTransfer (native) بدلاً من fetch() (WebView)
+      // السبب: fetch() في Android WebView يفشل في تتبع redirect 302 من github.com
+      // إلى release-assets.githubusercontent.com بسبب content-length: 0 + CSP صارم.
+      // FileTransfer يستخدم HttpURLConnection الأصلي الذي يتبع redirects بشكل صحيح.
+      if (getPlatform() === 'native') {
+        // احصل على المسار الكامل للملف المؤقت
+        const fileInfo = await Filesystem.getUri({
+          path: zipTempPath,
+          directory: Directory.Data,
+        });
 
-      // Write streaming chunk-by-chunk with timeout protection
-      // Each chunk is written directly without prolonged Base64 conversion to avoid memory leaks
-      const pendingChunk = new Uint8Array(CHUNK_THRESHOLD);
-      let pendingOffset = 0;
-      let writeCount = 0;
-
-      const flushPending = async () => {
-        if (pendingOffset === 0) return;
-        
-        // Slice creates a new ArrayBuffer with only the actual data
-        const actualData = pendingChunk.slice(0, pendingOffset);
-        const chunkBase64 = arrayBufferToBase64(actualData.buffer);
-        
-        // Write with timeout and retry logic
-        await writeChunkWithTimeout(zipTempPath, chunkBase64);
-        writeCount++;
-        
-        // Trigger GC every 20 writes to prevent memory accumulation
-        if (writeCount % 20 === 0) {
-          triggerGarbageCollection();
-        }
-        
-        pendingOffset = 0;
-      };
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            downloadedBytes += value.length;
-
-            // أضف القطعة إلى buffer المؤقت؛ اكتب إذا امتلأ
-            if (pendingOffset + value.length > CHUNK_THRESHOLD) {
-              await flushPending();
-            }
-            
-            // إذا كانت القطعة نفسها أكبر من CHUNK_THRESHOLD (نادر)، اكتبها مباشرة
-            if (value.length >= CHUNK_THRESHOLD) {
-              const directBase64 = arrayBufferToBase64(value.buffer);
-              await writeChunkWithTimeout(zipTempPath, directBase64);
-              writeCount++;
-              if (writeCount % 20 === 0) {
-                triggerGarbageCollection();
-              }
-            } else {
-              pendingChunk.set(value, pendingOffset);
-              pendingOffset += value.length;
-            }
-
-            if (totalBytes > 0) {
-              const fetchPercent = 15 + Math.floor((downloadedBytes / totalBytes) * 45); // 15% -> 60%
-              onProgress?.(fetchPercent, `تنزيل الخطوط: ${Math.round((downloadedBytes / 1024 / 1024) * 10) / 10} ميجا / ${Math.round((totalBytes / 1024 / 1024) * 10) / 10} ميجا...`);
-            }
+        // استمع لـ progress events
+        const progressListener = await FileTransfer.addListener('progress', (progress: any) => {
+          const downloaded = progress.bytes || 0;
+          const total = progress.contentLength || 0;
+          if (total > 0) {
+            const fetchPercent = 15 + Math.floor((downloaded / total) * 45); // 15% -> 60%
+            onProgress?.(fetchPercent, `تنزيل الخطوط: ${Math.round((downloaded / 1024 / 1024) * 10) / 10} ميجا / ${Math.round((total / 1024 / 1024) * 10) / 10} ميجا...`);
           }
+        });
+
+        try {
+          await FileTransfer.downloadFile({
+            url: REMOTE_ZIP_URL,
+            path: fileInfo.uri,
+            progress: true,
+          });
+        } finally {
+          progressListener.remove();
         }
-        // اكتب أي بقايا متبقية في buffer
-        await flushPending();
       } else {
-        // Fallback: استخدم blob دفعة واحدة (نادراً ما يُستخدم — فقط إذا لم يتوفر reader)
+        // مسار الويب: استخدم fetch العادي (يعمل بشكل صحيح على المتصفح)
+        const response = await fetchFontZipWithRetry();
         const blob = await response.blob();
         const buffer = await blob.arrayBuffer();
         const fullBase64 = arrayBufferToBase64(buffer);
-        await writeChunkWithTimeout(zipTempPath, fullBase64);
+        await Filesystem.writeFile({
+          path: zipTempPath,
+          data: fullBase64,
+          directory: Directory.Data,
+        });
       }
 
       onProgress?.(65, 'جاري حفظ الحزمة المضغوطة في ذاكرة الهاتف الدائمة...');
