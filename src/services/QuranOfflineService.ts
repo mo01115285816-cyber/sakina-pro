@@ -1,5 +1,6 @@
 import localforage from 'localforage';
 import { MushafLayoutService } from './MushafLayoutService';
+import { QcfFontStorage } from './QcfFontStorage';
 
 const TAFSIR_VERSION_KEY = 'quran_tafsir_version';
 const TAFSIR_VERSION = 'ibn-kathir-v1';
@@ -109,7 +110,17 @@ export const QuranOfflineService = {
     const mushafReady = await MushafLayoutService.isDownloaded();
     if (!mushafReady) return false;
     const tafsirsCount = await tafsirStore.length();
-    return tafsirsCount >= TOTAL_PAGES;
+    if (tafsirsCount < TOTAL_PAGES) return false;
+
+    // تحقق من الخطوط — بدون هذا، التطبيق يفتح القائمة كاذباً بعد فشل استخراج الخطوط.
+    // السيناريو الخاطئ: لو فشلت extractFonts() بعد نجاح downloadTafsir()،
+    // TAFSIR_VERSION_KEY يكون محفوظاً → isDownloaded() ترجع true → القائمة تفتح
+    // → المستخدم يفتح سورة → readFontAsBlobUrl يفشل → "جاري تحميل خط المصحف" للأبد.
+    // هذا التحقق يمنع هذا السيناريو الكارثي.
+    const fontsReady = await QcfFontStorage.isExtracted();
+    if (!fontsReady) return false;
+
+    return true;
   },
 
   async getPage(pageNumber: number): Promise<any[] | null> {
