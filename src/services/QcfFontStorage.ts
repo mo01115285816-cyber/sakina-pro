@@ -10,11 +10,6 @@ const REMOTE_ZIP_URL = 'https://github.com/mo01115285816-cyber/sakina/releases/d
 const WEB_QCF_FONT_BASE_URL = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2';
 const LOCAL_WEB_QCF_SAMPLE_PAGES = new Set([1, 2]);
 
-// Timeout and retry constants optimized for Android
-const WRITE_OPERATION_TIMEOUT = 60000; // 60 seconds per write
-const MAX_WRITE_RETRIES = 3;
-const CHUNK_THRESHOLD = 1024 * 1024; // 1 MB (reduced from 2 MB to minimize memory pressure)
-
 type Platform = 'web' | 'native';
 
 function getPlatform(): Platform {
@@ -41,20 +36,6 @@ function fontId(pageNumber: number): string {
 }
 
 /**
- * Convert Uint8Array to base64 string with chunked processing to avoid stack overflow
- */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode.apply(null, Array.from(chunk) as unknown as number[]);
-  }
-  return btoa(binary);
-}
-
-/**
  * Capacitor Filesystem.getUri() returns a file:// URI, while the Android Zip
  * plugin consumes an absolute filesystem path through java.io.File.
  */
@@ -68,91 +49,6 @@ function nativePathFromUri(uri: string): string {
     // Keep the original value so the native plugin can report its real error.
   }
   return uri;
-}
-
-/**
- * Helper: تنزيل حزمة الخطوط مع إعادة المحاولة عند فشل الشبكة.
- * يحاول حتى MAX_DOWNLOAD_RETRIES محاولات مع exponential backoff.
- * يعيد Response ناجح فقط، أو يُلقي استثناء بعد نفاد المحاولات.
- */
-const MAX_DOWNLOAD_RETRIES = 4;
-async function fetchFontZipWithRetry(): Promise<Response> {
-  let lastError: unknown = new Error('تعذر الاتصال بخادم الخطوط');
-  for (let attempt = 0; attempt <= MAX_DOWNLOAD_RETRIES; attempt += 1) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
-      
-      try {
-        const response = await fetch(REMOTE_ZIP_URL, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (response.ok) return response;
-        lastError = new Error(`تعذر الاتصال بخادم الخطوط (HTTP ${response.status})`);
-        // لا تُعيد المحاولة على 4xx (أخطاء العميل)
-        if (response.status >= 400 && response.status < 500 && response.status !== 429) break;
-      } catch (e) {
-        clearTimeout(timeoutId);
-        throw e;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-    if (attempt < MAX_DOWNLOAD_RETRIES) {
-      const delay = Math.min(8000, 700 * 2 ** attempt);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-  throw lastError;
-}
-
-/**
- * Write chunk with timeout and retry logic to handle stalled writes on Android
- */
-async function writeChunkWithTimeout(
-  path: string,
-  data: string,
-  retryCount = 0
-): Promise<void> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), WRITE_OPERATION_TIMEOUT);
-
-  try {
-    // Use Promise wrapper to enforce timeout
-    await Promise.race([
-      Filesystem.appendFile({
-        path,
-        data,
-        directory: Directory.Data,
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('WRITE_TIMEOUT')), WRITE_OPERATION_TIMEOUT)
-      ),
-    ]);
-    clearTimeout(timeoutId);
-  } catch (err) {
-    clearTimeout(timeoutId);
-    
-    // Retry on timeout with exponential backoff
-    if ((err instanceof Error && err.message === 'WRITE_TIMEOUT') || err === 'WRITE_TIMEOUT') {
-      if (retryCount < MAX_WRITE_RETRIES) {
-        const retryDelay = Math.min(5000, 500 * 2 ** retryCount);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        return writeChunkWithTimeout(path, data, retryCount + 1);
-      }
-      throw new Error(`فشل كتابة الملف بعد ${MAX_WRITE_RETRIES} محاولات - انقطع الاتصال أو مشكلة في الجهاز`);
-    }
-    throw err;
-  }
-}
-
-/**
- * Trigger garbage collection hint on Android to free memory between chunks
- */
-function triggerGarbageCollection(): void {
-  if (getPlatform() === 'native' && typeof (global as any).gc === 'function') {
-    (global as any).gc();
-  }
 }
 
 export const QcfFontStorage = {
@@ -229,47 +125,33 @@ export const QcfFontStorage = {
         // الملف قد لا يكون موجوداً — تجاهل بصمت
       }
 
-      // الحل الجذري: استخدام FileTransfer (native) بدلاً من fetch() (WebView)
-      // السبب: fetch() في Android WebView يفشل في تتبع redirect 302 من github.com
-      // إلى release-assets.githubusercontent.com بسبب content-length: 0 + CSP صارم.
-      // FileTransfer يستخدم HttpURLConnection الأصلي الذي يتبع redirects بشكل صحيح.
-      if (getPlatform() === 'native') {
-        // احصل على المسار الكامل للملف المؤقت
-        const fileInfo = await Filesystem.getUri({
-          path: zipTempPath,
-          directory: Directory.Data,
-        });
+      // الحل الجذري: FileTransfer (native) يتجاوز WebView بالكامل في تنزيل الخطوط.
+      // على Android، FileTransfer يستخدم HttpURLConnection الأصلي الذي يتبع redirects
+      // بشكل صحيح ويتفادى ضغط الذاكرة من Base64 chunked processing في WebView.
+      // مسار الويب لا يستدعي extractFonts إطلاقاً (early return في السطر 197).
+      const fileInfo = await Filesystem.getUri({
+        path: zipTempPath,
+        directory: Directory.Data,
+      });
 
-        // استمع لـ progress events
-        const progressListener = await FileTransfer.addListener('progress', (progress: any) => {
-          const downloaded = progress.bytes || 0;
-          const total = progress.contentLength || 0;
-          if (total > 0) {
-            const fetchPercent = 15 + Math.floor((downloaded / total) * 45); // 15% -> 60%
-            onProgress?.(fetchPercent, `تنزيل الخطوط: ${Math.round((downloaded / 1024 / 1024) * 10) / 10} ميجا / ${Math.round((total / 1024 / 1024) * 10) / 10} ميجا...`);
-          }
-        });
-
-        try {
-          await FileTransfer.downloadFile({
-            url: REMOTE_ZIP_URL,
-            path: fileInfo.uri,
-            progress: true,
-          });
-        } finally {
-          progressListener.remove();
+      // استمع لـ progress events
+      const progressListener = await FileTransfer.addListener('progress', (progress: any) => {
+        const downloaded = progress.bytes || 0;
+        const total = progress.contentLength || 0;
+        if (total > 0) {
+          const fetchPercent = 15 + Math.floor((downloaded / total) * 45); // 15% -> 60%
+          onProgress?.(fetchPercent, `تنزيل الخطوط: ${Math.round((downloaded / 1024 / 1024) * 10) / 10} ميجا / ${Math.round((total / 1024 / 1024) * 10) / 10} ميجا...`);
         }
-      } else {
-        // مسار الويب: استخدم fetch العادي (يعمل بشكل صحيح على المتصفح)
-        const response = await fetchFontZipWithRetry();
-        const blob = await response.blob();
-        const buffer = await blob.arrayBuffer();
-        const fullBase64 = arrayBufferToBase64(buffer);
-        await Filesystem.writeFile({
-          path: zipTempPath,
-          data: fullBase64,
-          directory: Directory.Data,
+      });
+
+      try {
+        await FileTransfer.downloadFile({
+          url: REMOTE_ZIP_URL,
+          path: fileInfo.uri,
+          progress: true,
         });
+      } finally {
+        progressListener.remove();
       }
 
       onProgress?.(65, 'جاري حفظ الحزمة المضغوطة في ذاكرة الهاتف الدائمة...');
