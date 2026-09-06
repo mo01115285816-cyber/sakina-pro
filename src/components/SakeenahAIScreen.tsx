@@ -107,16 +107,79 @@ const CodeBlock = ({ children }: { children: string }) => {
   );
 };
 
+/* ─────────────────────────────────────────────────────────────
+   إصلاح المسافات العمودية في ردود سَكِينَة AI
+   ─────────────────────────────────────────────────────────────
+   react-markdown يبثّ أسطرًا جديدة (text nodes) مخفية بين عناصر
+   البلوك: بين الفقرات، وبين بنود القوائم، وداخل البنود نفسها.
+   والخاصية white-space "موروثة"، لذلك أي whitespace-pre-wrap على
+   حاوية خارجية كان يحوّل كل سطر من هذه الأسطر إلى سطر فارغ
+   مرئي بارتفاع كامل (~22px لكل سطر). لهذا تم:
+   1) قصر pre-wrap على عناصر النص نفسها فقط (p ومحتوى li).
+   2) تطبيع النص الخام القادم من النموذج قبل تحويله لماركداون.
+   3) إلغاء تراكم الهوامش داخل القوائم والاقتباسات.
+   ───────────────────────────────────────────────────────────── */
+
+const ListContext = React.createContext(false);
+
+/** أسطر تحتوي مسافات "غير مرئية" فقط (NBSP/ZWSP...):
+ *  CommonMark لا يعتبرها سطرًا فارغًا فتبقى داخل الفقرة نفسها
+ *  وتُرندر مع pre-wrap كسطر شبح فارغ كامل الارتفاع. */
+const GHOST_LINE = /^[ \t\u00A0\u200B\u200C\u200D\uFEFF]+$/gm;
+
+/** مسافات لاحقة في نهاية السطر: يحوّلها الماركداون إلى <br/>
+ *  ويُبقي معها "\n" في نص الفقرة، فيظهر كسران متتاليان مع pre-wrap. */
+const TRAILING_SPACES = /[ \t]+$/gm;
+
+/** تطبيع نص الرد قبل عرضه: توحيد نهايات الأسطر، إزالة المسافات
+ *  اللاحقة، تحويل أسطر الشبح إلى فواصل فقرات حقيقية، وضغط
+ *  الأسطر الفارغة المتتالية. لا يلمس كتل الشيفرة ``` المحمية. */
+const normalizeMarkdownSpacing = (raw: string): string => {
+  if (!raw) return raw;
+  const segments = raw.split(/(```[\s\S]*?```)/g);
+  return segments
+    .map((segment) => {
+      if (segment.startsWith("```")) return segment;
+      return segment
+        .replace(/\r\n?/g, "\n")
+        .replace(TRAILING_SPACES, "")
+        .replace(GHOST_LINE, "")
+        .replace(/\n{3,}/g, "\n\n");
+    })
+    .join("")
+    .trim();
+};
+
 const markdownComponents = {
+  h1: ({ children }: any) => (
+    <h1 className="text-[17px] font-display font-black text-[#2b1a10] mt-4 mb-2 text-right">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }: any) => (
+    <h2 className="text-[16px] font-display font-black text-[#2b1a10] mt-4 mb-2 text-right">
+      {children}
+    </h2>
+  ),
   h3: ({ children }: any) => (
-    <h3 className="text-[16px] font-display font-display font-black text-[#2b1a10] mt-4 mb-2 text-right">
+    <h3 className="text-[16px] font-display font-black text-[#2b1a10] mt-4 mb-2 text-right">
       {children}
     </h3>
   ),
   h4: ({ children }: any) => (
-    <h4 className="text-[15px] font-display font-display font-black text-[#2b1a10] mt-3 mb-1 text-right">
+    <h4 className="text-[15px] font-display font-black text-[#2b1a10] mt-3 mb-1 text-right">
       {children}
     </h4>
+  ),
+  h5: ({ children }: any) => (
+    <h5 className="text-[14px] font-display font-black text-[#2b1a10] mt-3 mb-1.5 text-right">
+      {children}
+    </h5>
+  ),
+  h6: ({ children }: any) => (
+    <h6 className="text-[14px] font-display font-black text-[#2b1a10]/90 mt-3 mb-1.5 text-right">
+      {children}
+    </h6>
   ),
   p: ({ children }: any) => (
     <p 
@@ -144,35 +207,44 @@ const markdownComponents = {
     </a>
   ),
   ul: ({ children }: any) => (
-    <ul className="space-y-1.5 mb-3 list-none pr-1">
-      {children}
-    </ul>
+    <ListContext.Provider value={false}>
+      <ul className="space-y-1.5 mb-3 list-none pr-1">{children}</ul>
+    </ListContext.Provider>
   ),
   ol: ({ children }: any) => (
-    <ol className="list-decimal list-inside space-y-1.5 mb-3 pr-2 text-right">
-      {children}
-    </ol>
+    <ListContext.Provider value={true}>
+      <ol className="list-decimal list-inside space-y-1.5 mb-3 pr-2 text-right">{children}</ol>
+    </ListContext.Provider>
   ),
-  li: ({ children, ordered }: any) => {
+  li: ({ children, ordered: orderedProp }: any) => {
+    // خاصية ordered متوفرة في react-markdown v8 فقط؛
+    // والـ Context يجعل الكشف صحيحًا مع أي إصدار أحدث دون تعديل.
+    const orderedFromContext = React.useContext(ListContext);
+    const ordered = orderedProp ?? orderedFromContext;
+    // حذف أسطر \n الفاصلة التي يبثّها react-markdown داخل البنود
+    // حتى لا تتحول لأسطر فارغة مرئية بسبب whitespace-pre-wrap.
+    const compact = Array.isArray(children)
+      ? children.filter((child: any) => typeof child !== "string" || child.trim() !== "")
+      : children;
     if (ordered) {
       return (
-        <li 
-          className="text-[14px] font-sans leading-relaxed text-[#2b1a10] my-0.5 text-right inline-block w-full"
+        <li
+          className="block w-full text-[14px] font-sans leading-relaxed text-[#2b1a10] text-right"
           dir="auto"
           style={{ unicodeBidi: "plaintext" }}
         >
-          {children}
+          <span className="block whitespace-pre-wrap">{compact}</span>
         </li>
       );
     }
     return (
-      <li 
-        className="flex items-start gap-2 text-[14px] font-sans leading-relaxed text-[#2b1a10] my-0.5"
+      <li
+        className="flex items-start gap-2 text-[14px] font-sans leading-relaxed text-[#2b1a10]"
         dir="auto"
         style={{ unicodeBidi: "plaintext" }}
       >
         <span className="text-[#b88a4f] mt-1.5 shrink-0 select-none text-[8px]">●</span>
-        <span className="flex-1 text-right">{children}</span>
+        <span className="flex-1 text-right whitespace-pre-wrap">{compact}</span>
       </li>
     );
   },
@@ -192,6 +264,7 @@ const markdownComponents = {
       {children}
     </blockquote>
   ),
+  hr: () => <hr className="my-3 h-px border-0 bg-[#e6dccf]" />,
   table: ({ children }: any) => (
     <div className="overflow-x-auto my-3 border border-[#e6dccf] rounded-xl">
       <table className="w-full text-right border-collapse text-[13px]">
@@ -206,8 +279,14 @@ const markdownComponents = {
   td: ({ children }: any) => <td className="p-2.5 font-sans text-[#2b1a10]/90">{children}</td>,
 };
 
+const remarkPlugins = [remarkGfm];
+
 const MarkdownRenderer = ({ content, animate = false, onComplete }: { content: string; animate?: boolean; onComplete?: () => void }) => {
-  const [displayedText, setDisplayedText] = useState(animate ? "" : content);
+  // تطبيع النص الخام قبل أي عرض: يعالج مخرجات النموذج نفسها
+  // (أسطر شبح NBSP/ZWSP + مسافات لاحقة + 3 أسطر جديدة متتالية)
+  // ويُطبق على البث الحي والرسائل المخزنة على حد سواء.
+  const normalizedContent = useMemo(() => normalizeMarkdownSpacing(content), [content]);
+  const [displayedText, setDisplayedText] = useState(animate ? "" : normalizedContent);
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
@@ -216,11 +295,11 @@ const MarkdownRenderer = ({ content, animate = false, onComplete }: { content: s
 
   useEffect(() => {
     if (!animate) {
-      setDisplayedText(content);
+      setDisplayedText(normalizedContent);
       return;
     }
 
-    const words = content.split(" ");
+    const words = normalizedContent.split(" ");
     let currentIdx = 0;
     
     setDisplayedText(words.slice(0, 1).join(" "));
@@ -236,15 +315,22 @@ const MarkdownRenderer = ({ content, animate = false, onComplete }: { content: s
     }, 35);
 
     return () => clearInterval(interval);
-  }, [content, animate]);
+  }, [normalizedContent, animate]);
 
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={markdownComponents as any}
-    >
-      {displayedText}
-    </ReactMarkdown>
+    /* الحاوية تُبقي white-space طبيعية بين البلوكات (أسطر \n المخفية
+       التي يبثها react-markdown لا تظهر)، مع إلغاء تراكم الهوامش:
+       - [&_li_p]:mb-0        → لا هامش فقرة داخل بنود القوائم (سواء
+                                 كانت القائمة فضفاضة/loose أم مضغوطة).
+       - [&_blockquote_p]:mb-1 → هوامش مضغوطة داخل الاقتباسات.
+       - [&_td_p]:mb-0         → لا هوامش داخل خلايا الجداول.
+       - [&>*:last-child]:mb-0 → آخر عنصر في الرسالة بلا هامش زائد
+                                 قبل شريط الأزرار أو الرسالة التالية. */
+    <div className="sakeenah-md-flow [&_li_p]:mb-0 [&_blockquote_p]:mb-1 [&_td_p]:mb-0 [&>*:last-child]:mb-0">
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents as any}>
+        {displayedText}
+      </ReactMarkdown>
+    </div>
   );
 };
 
@@ -1257,7 +1343,10 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
                       </>
                     ) : (
                       <div className="w-full text-right bg-transparent border-none shadow-none px-0 py-2 text-[#2b1a10]">
-                        <div className="whitespace-pre-wrap">
+                        {/* مهم: لا تضع whitespace-pre-wrap على أي حاوية خارجية —
+                            الخاصية موروثة وستحوّل أسطر \n الفاصلة بين البلوكات
+                            إلى أسطر فارغة مرئية. pre-wrap مقصور على عناصر النص. */}
+                        <div>
                           {m.content.trim() === "" && m.isStreaming ? (
                         <div className="flex items-center gap-1.5 py-3 justify-start">
                           <span className="w-2 h-2 rounded-full bg-[#b88a4f] animate-bounce [animation-delay:-0.3s]"></span>
