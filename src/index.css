@@ -761,3 +761,30 @@
     opacity: 1;
   }
 }
+
+/* === Thinking Shimmer Effect — Pure CSS, infinite loop === */
+/* تأثير لمعان هادئ على كلمة Thinking — ضوء رملي يدور داخل الحروف بلا نهاية */
+.thinking-shimmer {
+  background: linear-gradient(90deg,
+    #7f6a55 0%,
+    #b88a4f 25%,
+    #deab65 50%,
+    #b88a4f 75%,
+    #7f6a55 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: thinking-shimmer-flow 3s linear infinite;
+}
+
+@keyframes thinking-shimmer-flow {
+  0% {
+    background-position: 200% 0%;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
+}

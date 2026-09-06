@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import SakeenahAvatar from "@/components/SakeenahAvatar";
 
 
 type Message = {
@@ -1418,16 +1419,10 @@ export const SakeenahAIScreen = React.memo(function SakeenahAIScreen({ onBack, u
 
             {isLoading && (
               <div className="flex justify-start w-full pr-1 py-2 pl-12">
-                <div className="relative inline-flex items-center">
-                  <span className="text-[14px] font-display font-bold text-[#7f6a55] select-none overflow-hidden">
-                    <span className="inline-block animate-shimmer-text bg-gradient-to-r from-[#7f6a55] via-[#b88a4f] to-[#7f6a55] bg-[length:200%_100%] bg-clip-text text-transparent">
-                      تفكير عميق
-                    </span>
-                  </span>
-                  <span className="ml-1.5 flex gap-0.5">
-                    <span className="w-1 h-1 rounded-full bg-[#b88a4f] animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1 h-1 rounded-full bg-[#b88a4f] animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1 h-1 rounded-full bg-[#b88a4f] animate-bounce" />
+                <div className="relative inline-flex items-center gap-2">
+                  <SakeenahAvatar animation="thinking" size={32} />
+                  <span dir="ltr" className="text-[14px] font-display font-bold select-none thinking-shimmer">
+                    Thinking
                   </span>
                 </div>
               </div>
